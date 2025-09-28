@@ -61,7 +61,7 @@ export function Sidebar() {
             <Server className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">Latch</h1>
+            <h1 className="text-lg font-semibold">NeonJack</h1>
             <p className="text-sm text-muted-foreground">SSH Manager</p>
           </div>
         </div>

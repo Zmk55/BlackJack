@@ -7,7 +7,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "Latch",
+    "productName": "NeonJack",
     "version": "0.1.0"
   },
   "tauri": {
@@ -27,13 +27,13 @@
         "readFile": true,
         "writeFile": true,
         "createDir": true,
-        "scope": ["$HOME/.latch"]
+        "scope": ["$HOME/.neonjack"]
       }
     },
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.latch.app",
+      "identifier": "com.neonjack.app",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -61,7 +61,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "Latch",
+        "title": "NeonJack",
         "width": 1200,
         "height": 800,
         "minWidth": 800,

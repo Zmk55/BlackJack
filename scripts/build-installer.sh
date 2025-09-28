@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Latch SSH Manager - Build Installer Script
+# NeonJack SSH Manager - Build Installer Script
 
 set -e
 
-echo "🚀 Building Latch SSH Manager installers..."
+echo "🚀 Building NeonJack SSH Manager installers..."
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then

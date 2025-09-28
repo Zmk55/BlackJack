@@ -253,7 +253,7 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: 'latch-ui-state',
+      name: 'neonjack-ui-state',
       partialize: (state) => ({ ui: state.ui }),
     }
   )

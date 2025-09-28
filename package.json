@@ -1,5 +1,5 @@
 {
-  "name": "latch",
+  "name": "neonjack",
   "version": "0.1.0",
   "description": "A modern, local-only SSH manager with encrypted import/export",
   "private": true,

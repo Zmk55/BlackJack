@@ -60,7 +60,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: latch-${{ matrix.os }}-${{ matrix.arch }}
+          name: neonjack-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/
           retention-days: 30
@@ -83,9 +83,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/latch-windows-x64/**/*
-            artifacts/latch-darwin-x64/**/*
-            artifacts/latch-linux-x64/**/*
+            artifacts/neonjack-windows-x64/**/*
+            artifacts/neonjack-darwin-x64/**/*
+            artifacts/neonjack-linux-x64/**/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

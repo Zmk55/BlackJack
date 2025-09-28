@@ -2,7 +2,7 @@
 
 # Latch SSH Manager Setup Script
 
-echo "🚀 Setting up Latch SSH Manager..."
+echo "🚀 Setting up NeonJack SSH Manager..."
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then

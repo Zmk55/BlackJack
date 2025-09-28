@@ -26,7 +26,7 @@ export function Onboarding() {
   const steps: OnboardingStep[] = [
     {
       id: 'welcome',
-      title: 'Welcome to Latch',
+      title: 'Welcome to NeonJack',
       description: 'Your secure, local-only SSH manager. No cloud, no sync, just your connections.',
       icon: Server,
     },

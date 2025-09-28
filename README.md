@@ -1,4 +1,4 @@
-# Latch - SSH Manager
+# NeonJack - SSH Manager
 
 A modern, local-only SSH manager with encrypted import/export. Built with Tauri, React, and TypeScript.
 
@@ -25,13 +25,13 @@ A modern, local-only SSH manager with encrypted import/export. Built with Tauri,
 
 ### For End Users (Recommended)
 
-**Download and install Latch like any other app:**
+**Download and install NeonJack like any other app:**
 
-1. Go to [GitHub Releases](https://github.com/your-org/latch/releases)
+1. Go to [GitHub Releases](https://github.com/Zmk55/NeonJack/releases)
 2. Download the installer for your platform:
-   - **Windows**: `Latch-Setup.exe`
-   - **macOS**: `Latch.dmg` 
-   - **Linux**: `latch_*.deb` or `latch_*.AppImage`
+   - **Windows**: `NeonJack-Setup.exe`
+   - **macOS**: `NeonJack.dmg` 
+   - **Linux**: `neonjack_*.deb` or `neonjack_*.AppImage`
 3. **Install and run** - no additional setup required!
 
 ### For Developers
@@ -40,8 +40,8 @@ See [INSTALL.md](./INSTALL.md) for detailed development setup instructions.
 
 **Quick setup:**
 ```bash
-git clone <repository-url>
-cd latch
+git clone https://github.com/Zmk55/NeonJack.git
+cd NeonJack
 ./setup.sh
 npm run dev
 ```
@@ -98,7 +98,7 @@ Press `Cmd/Ctrl + K` to open the command palette. You can:
 
 ## Data Storage
 
-Latch stores your vault at `~/.latch/vault.json`. This file contains:
+NeonJack stores your vault at `~/.neonjack/vault.json`. This file contains:
 - All your hosts and groups
 - Unencrypted (local-only)
 - Automatically backed up on changes
@@ -115,7 +115,7 @@ Latch stores your vault at `~/.latch/vault.json`. This file contains:
 ### Project Structure
 
 ```
-latch/
+NeonJack/
 ├── apps/desktop/           # Main application
 │   ├── src/               # React frontend
 │   │   ├── components/    # UI components

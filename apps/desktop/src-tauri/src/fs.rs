@@ -8,10 +8,10 @@ pub fn get_vault_path() -> Result<PathBuf> {
     let home_dir = dirs::home_dir()
         .ok_or_else(|| anyhow!("Could not find home directory"))?;
     
-    let latch_dir = home_dir.join(".latch");
+    let latch_dir = home_dir.join(".neonjack");
     if !latch_dir.exists() {
         fs::create_dir_all(&latch_dir)
-            .map_err(|e| anyhow!("Failed to create .latch directory: {}", e))?;
+            .map_err(|e| anyhow!("Failed to create .neonjack directory: {}", e))?;
     }
     
     Ok(latch_dir.join("vault.json"))

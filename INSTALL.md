@@ -1,4 +1,4 @@
-# Installing Latch SSH Manager
+# Installing NeonJack SSH Manager
 
 ## 🚀 Quick Start (Recommended for Users)
 
@@ -6,11 +6,11 @@
 
 **For most users, download the pre-built installer:**
 
-1. Go to [GitHub Releases](https://github.com/your-org/latch/releases)
+1. Go to [GitHub Releases](https://github.com/Zmk55/NeonJack/releases)
 2. Download the installer for your platform:
-   - **Windows**: `Latch-Setup.exe`
-   - **macOS**: `Latch.dmg`
-   - **Linux**: `latch_*.deb` or `latch_*.AppImage`
+   - **Windows**: `NeonJack-Setup.exe`
+   - **macOS**: `NeonJack.dmg`
+   - **Linux**: `neonjack_*.deb` or `neonjack_*.AppImage`
 
 3. **Install and run** - no additional setup required!
 
@@ -55,8 +55,8 @@ sudo apt install libwebkit2gtk-4.0-dev \
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/your-org/latch.git
-cd latch
+git clone https://github.com/Zmk55/NeonJack.git
+cd NeonJack
 ```
 
 2. **Run the setup script:**
@@ -91,17 +91,17 @@ npm run build:linux
 The build process creates these installer packages:
 
 ### Windows
-- **NSIS Installer**: `Latch-Setup.exe`
-- **Portable**: `latch.exe` (no installation required)
+- **NSIS Installer**: `NeonJack-Setup.exe`
+- **Portable**: `neonjack.exe` (no installation required)
 
 ### macOS
-- **Disk Image**: `Latch.dmg`
-- **App Bundle**: `Latch.app` (drag to Applications)
+- **Disk Image**: `NeonJack.dmg`
+- **App Bundle**: `NeonJack.app` (drag to Applications)
 
 ### Linux
-- **Debian Package**: `latch_*.deb`
-- **AppImage**: `latch_*.AppImage` (portable)
-- **RPM**: `latch_*.rpm` (for Red Hat-based distros)
+- **Debian Package**: `neonjack_*.deb`
+- **AppImage**: `neonjack_*.AppImage` (portable)
+- **RPM**: `neonjack_*.rpm` (for Red Hat-based distros)
 
 ---
 
@@ -126,15 +126,15 @@ The build process creates these installer packages:
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/latch/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/latch/discussions)
-- **Documentation**: [Wiki](https://github.com/your-org/latch/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Zmk55/NeonJack/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Zmk55/NeonJack/discussions)
+- **Documentation**: [Wiki](https://github.com/Zmk55/NeonJack/wiki)
 
 ---
 
 ## 🎯 For End Users
 
-**If you just want to use Latch:**
+**If you just want to use NeonJack:**
 
 1. **Download** the installer from GitHub Releases
 2. **Install** like any other application

@@ -1,5 +1,5 @@
 [package]
-name = "latch-desktop"
+name = "neonjack-desktop"
 version = "0.1.0"
 description = "A modern, local-only SSH manager with encrypted import/export"
 authors = ["you"]
