@@ -726,17 +726,13 @@ class BlackJackApp {
         const newTabBtn = document.querySelector('.new-tab-btn');
         newTabBtn.parentNode.insertBefore(tab, newTabBtn);
         
-        // Create tab content - SSH tabs should only show terminal
+        // Create tab content with xterm.js terminal
         const tabContent = document.createElement('div');
         tabContent.id = `${tabId}-content`;
         tabContent.className = 'tab-content';
         tabContent.innerHTML = `
             <div class="ssh-terminal" id="terminal-${tabId}">
-                <div class="terminal-line">Connecting to ${host.user}@${host.address}:${host.port}...</div>
-                <div class="terminal-line">SSH connection established</div>
-                <div class="terminal-line">${host.user}@${host.name}:~$ <span class="terminal-cursor"> </span></div>
-                <div class="terminal-line">This is a demo terminal. In a real implementation, this would connect to your SSH server.</div>
-                <div class="terminal-line">You can type commands here and they would be executed on the remote server.</div>
+                <div id="xterm-${tabId}" class="xterm-terminal"></div>
             </div>
         `;
         
@@ -752,6 +748,111 @@ class BlackJackApp {
             type: 'ssh',
             host: host
         });
+        
+        // Initialize xterm.js terminal with real SSH connection
+        this.initializeSSHTerminal(tabId, host);
+    }
+
+    initializeSSHTerminal(tabId, host) {
+        // Initialize xterm.js terminal
+        const terminal = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: '#000000',
+                foreground: '#00ff00',
+                cursor: '#00ff00'
+            },
+            fontSize: 14,
+            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
+        });
+
+        // Add fit addon
+        const fitAddon = new FitAddon.FitAddon();
+        terminal.loadAddon(fitAddon);
+
+        // Add web links addon
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+        terminal.loadAddon(webLinksAddon);
+
+        // Open terminal in the container
+        const terminalElement = document.getElementById(`xterm-${tabId}`);
+        terminal.open(terminalElement);
+        fitAddon.fit();
+
+        // Connect to WebSocket for SSH
+        this.connectSSHWebSocket(tabId, host, terminal);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+        });
+
+        // Store terminal reference
+        this.terminals = this.terminals || {};
+        this.terminals[tabId] = { terminal, fitAddon, webLinksAddon };
+    }
+
+    connectSSHWebSocket(tabId, host, terminal) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/ssh`;
+        
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            
+            // Send SSH connection request
+            const sshRequest = {
+                host: host.address,
+                port: host.port || 22,
+                username: host.user,
+                password: '', // For now, we'll use SSH keys or agent
+                keyPath: '' // Could be enhanced to support key files
+            };
+            
+            ws.send(JSON.stringify({
+                type: 'connect',
+                data: JSON.stringify(sshRequest)
+            }));
+        };
+        
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            
+            switch (message.type) {
+                case 'connected':
+                    terminal.write('SSH connection established\r\n');
+                    break;
+                case 'output':
+                    terminal.write(message.data);
+                    break;
+                case 'error':
+                    terminal.write(`\r\nError: ${message.data}\r\n`);
+                    break;
+            }
+        };
+        
+        ws.onclose = () => {
+            terminal.write('\r\nSSH connection closed\r\n');
+        };
+        
+        ws.onerror = (error) => {
+            terminal.write(`\r\nWebSocket error: ${error}\r\n`);
+        };
+        
+        // Handle terminal input
+        terminal.onData((data) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'input',
+                    data: data
+                }));
+            }
+        });
+        
+        // Store WebSocket reference
+        this.websockets = this.websockets || {};
+        this.websockets[tabId] = ws;
     }
 
     switchTab(tabId) {
@@ -788,6 +889,18 @@ class BlackJackApp {
         // Don't allow closing the main tab
         if (tabId === 'main') {
             return;
+        }
+        
+        // Clean up WebSocket connection
+        if (this.websockets && this.websockets[tabId]) {
+            this.websockets[tabId].close();
+            delete this.websockets[tabId];
+        }
+        
+        // Clean up terminal
+        if (this.terminals && this.terminals[tabId]) {
+            this.terminals[tabId].terminal.dispose();
+            delete this.terminals[tabId];
         }
         
         // Remove tab element

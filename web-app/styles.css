@@ -1184,14 +1184,33 @@ input:checked + .toggle-slider:before {
 .ssh-terminal {
     background: #000000;
     color: #00ff00;
-    font-family: 'Courier New', monospace;
-    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    padding: 0;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
     width: 100%;
     position: absolute;
     top: 0;
     left: 0;
+}
+
+.xterm-terminal {
+    width: 100%;
+    height: 100%;
+    background: #000000;
+}
+
+.xterm {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.xterm-viewport {
+    background: #000000 !important;
+}
+
+.xterm-screen {
+    background: #000000 !important;
     right: 0;
     bottom: 0;
 }
