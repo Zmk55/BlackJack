@@ -1,234 +1,105 @@
 # BlackJack
 
-A modern desktop SSH/SFTP client with tabbed interface, host management, and native desktop experience.
+A modern web-based SSH management application with tabbed interface, host management, and advanced organization features.
 
 ## Features
 
-- **Native Desktop App**: Built with Tauri (Rust + Web frontend)
-- **Tabbed Interface**: Multiple SSH sessions in separate tabs
-- **Host Management**: Add, edit, and organize SSH hosts
-- **Modern UI**: Dark theme with professional appearance
-- **Cross-platform**: Works on Windows, macOS, and Linux
-- **No Browser Required**: Standalone desktop application
+- **Modern Web GUI**: Beautiful dark-themed interface with responsive design
+- **Tabbed Interface**: Multiple SSH sessions in separate tabs with drag-and-drop support
+- **Host Management**: Add, edit, clone, and organize SSH hosts with hierarchical groups
+- **Advanced Organization**: Hierarchical groups with host counts and collapsible sidebar
+- **Smart Tagging**: Color-coded tags with automatic Tailscale detection
+- **Search & Filter**: Real-time search across hostnames, groups, and tags
+- **Tailscale Integration**: Automatic tagging and connection options for Tailscale hosts
+- **Settings Management**: Comprehensive settings with integrations and data management
+- **Cross-platform**: Works on any platform with a modern web browser
 
-## Installation
+## Quick Start
 
-### Prerequisites
-
-- Rust (for building the desktop app)
-- Node.js (for web frontend development)
-
-### Quick Start
+### Web Application (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/blackjack/blackjack.git
-cd blackjack
+git clone https://github.com/Zmk55/BlackJack.git
+cd BlackJack
 
-# Run the desktop application
+# Start the web application
+cd web-app
+python3 -m http.server 8082
+
+# Open your browser to http://localhost:8082
+```
+
+### Desktop Application (Tauri)
+
+```bash
+# Prerequisites: Rust and Node.js
 cd desktop
 ./run.sh
 ```
 
-### Build for Production
-
-```bash
-cd desktop
-./build.sh
-```
-
-### Development Setup
-
-```bash
-# Setup development environment
-make dev-setup
-
-# Run tests
-make test
-
-# Run with coverage
-make test-coverage
-
-# Format code
-make fmt
-
-# Lint code
-make lint
-```
-
 ## Usage
 
-### Basic Commands
+### Web Interface
 
-```bash
-# Launch the TUI interface (default)
-blackjack
+1. **Add Hosts**: Click "Add Host" to create new SSH connections
+2. **Organize with Groups**: Create hierarchical groups for better organization
+3. **Tag Management**: Add color-coded tags for easy identification
+4. **Search**: Use the search bar to quickly find hosts
+5. **Connect**: Click "Connect" to open SSH sessions in new tabs
+6. **Settings**: Configure integrations and manage data
 
-# Launch TUI explicitly
-blackjack tui
+### Key Features
 
-# Add a new host (non-TUI)
-blackjack add host --name "Web Server" --addr "10.0.1.15" --user "ubuntu"
+#### Host Management
+- **Add/Edit/Delete**: Full CRUD operations for hosts
+- **Clone Hosts**: Duplicate hosts with "-copy" suffix
+- **Group Assignment**: Organize hosts into hierarchical groups
+- **Tag System**: Color-coded tags with automatic Tailscale detection
 
-# Import configuration
-blackjack import backup.tar.gz
+#### Advanced Organization
+- **Hierarchical Groups**: Create nested group structures
+- **Host Counts**: See host counts in parentheses next to group names
+- **Collapsible Sidebar**: Hide/show the organization panel
+- **Search & Filter**: Real-time filtering by hostname, group, or tag
 
-# Export configuration
-blackjack export
+#### Tailscale Integration
+- **Automatic Detection**: Tailscale IPs automatically get 🔗 Tailscale tags
+- **Connection Options**: Choose between local and Tailscale connections
+- **Visual Indicators**: Clear identification of Tailscale-enabled hosts
 
-# Check system configuration
-blackjack doctor
-
-# Show version
-blackjack version
-```
-
-### TUI Navigation
-
-#### Keybindings
-
-| Key | Action |
-|-----|--------|
-| `c` | Connect to selected host |
-| `s` | Open SFTP browser |
-| `n` | New host/group |
-| `e` | Edit selected item |
-| `d` | Delete selected item |
-| `/` | Search/filter |
-| `?` | Help |
-| `F10` | Settings |
-| `F2` | Key manager |
-| `F8` | Import/Export |
-| `Ctrl+C` | Exit |
-
-#### Navigation
-
-- **Arrow Keys**: Move through lists
-- **Tab/Shift+Tab**: Switch between panes
-- **Enter**: Select item
-- **g**: Focus groups tree
-- **h/l**: Collapse/expand groups
-- **Page Up/Down**: Scroll through lists
+#### Settings & Data Management
+- **Integrations**: Enable/disable Tailscale integration
+- **Data Management**: Clear tag history and manage application data
+- **Modern UI**: Card-based settings with toggle switches
 
 ## Configuration
 
-BlackJack stores its configuration in `~/.blackjack/` (or `$XDG_CONFIG_HOME/blackjack` and `$XDG_STATE_HOME/blackjack` if set).
+### Data Storage
 
-### Directory Structure
+BlackJack stores data in browser localStorage:
+- **Hosts**: SSH connection details and metadata
+- **Groups**: Hierarchical organization structure
+- **Tags**: Color-coded categorization system
+- **Settings**: Application preferences and integrations
 
-```
-~/.blackjack/
-├── config/
-│   ├── app.yaml          # Global settings
-│   └── profiles.yaml     # User profiles
-├── inventory/
-│   ├── groups.yaml       # Host groups
-│   ├── hosts.yaml        # Host definitions
-│   ├── secrets.yaml      # Secret metadata (no raw keys)
-│   └── tags.yaml         # Host tags
-├── keys/                 # SSH private keys (0700)
-├── sessions/             # Connection history
-├── logs/                 # Application logs
-├── exports/              # Backup files
-└── plugins/              # Future: executable plugins
-```
+### Host Configuration
 
-### Configuration Files
-
-#### `config/app.yaml`
-
-```yaml
-theme: "matrix"   # matrix | mono | solarized_dark | dracula
-keybinds:
-  connect: "c"
-  sftp: "s"
-  search: "/"
-terminal:
-  external: true
-  command: "$TERMINAL -e"
-ssh:
-  forward_agent: true
-  strict_hostkey: true
-  connect_timeout: 30
-sftp:
-  transfer_concurrency: 4
-  buffer_size: 32768
-telemetry: false
-```
-
-#### `inventory/hosts.yaml`
-
-```yaml
-version: 1
-hosts:
-  - id: "web-01"
-    name: "Web 01"
-    address: "10.0.1.15"
-    port: 22
-    user: "ubuntu"
-    auth:
-      type: "key"            # key | agent | password
-      key_id: "ed25519_main" # matches keys/<key_id>
-    groups: ["prod", "web"]
-    tags: ["ubuntu", "nginx"]
-    notes: "Primary frontend"
-```
-
-#### `inventory/groups.yaml`
-
-```yaml
-version: 1
-groups:
-  - id: "prod"
-    name: "Production"
-    parent: null
-  - id: "web"
-    name: "Web"
-    parent: "prod"
-```
-
-## Security
-
-### Key Management
-
-- Private keys are stored in `~/.blackjack/keys/` with strict permissions (0700)
-- Support for OpenSSH, ed25519, and RSA keys
-- Passphrase protection for encrypted keys
-- SSH agent integration
-
-### Security Features
-
-- Never store plaintext passwords
-- Redact secrets in logs
-- Respect system `~/.ssh/known_hosts`
-- Optional telemetry (disabled by default)
-
-## Themes
-
-BlackJack supports multiple themes:
-
-- **matrix**: Classic green-on-black matrix theme
-- **mono**: Monochrome theme
-- **solarized_dark**: Solarized dark theme
-- **dracula**: Dracula color scheme
-
-## Import/Export
-
-### Export
-
-```bash
-# Export all data
-blackjack export
-
-# Export with redacted keys
-blackjack export --redact
-```
-
-### Import
-
-```bash
-# Import from backup
-blackjack import backup.tar.gz
+```javascript
+// Example host structure
+{
+  "id": "web-server-01",
+  "name": "Web Server 01",
+  "address": "192.168.1.100",
+  "user": "ubuntu",
+  "port": 22,
+  "groupId": "production",
+  "tags": [
+    {"name": "Web", "color": "blue"},
+    {"name": "Production", "color": "red"}
+  ],
+  "tailscaleIp": "100.64.1.5" // Optional Tailscale IP
+}
 ```
 
 ## Development
@@ -236,47 +107,82 @@ blackjack import backup.tar.gz
 ### Project Structure
 
 ```
-/cmd/blackjack/main.go          # CLI entry point
-/internal/app/                  # TUI app wiring
-/internal/ui/                   # tview views, modals, keybinds
-/internal/data/                 # YAML repositories
-/internal/ssh/                  # SSH client, auth resolution
-/internal/sftp/               # SFTP operations
-/internal/config/              # Configuration management
-/internal/export/              # Import/export functionality
-/internal/security/            # Key management, redaction
-/pkg/models/                   # Data models
-/assets/themes/                # Theme definitions
-/examples/                     # Example configurations
+BlackJack/
+├── web-app/                 # Web application (HTML, CSS, JS)
+│   ├── index.html          # Main interface
+│   ├── styles.css          # Modern styling
+│   └── app.js              # Application logic
+├── desktop/                # Tauri desktop application
+│   ├── src-tauri/         # Rust backend
+│   └── web/               # Web frontend
+├── internal/              # Go backend (legacy)
+├── pkg/                   # Go packages
+├── examples/              # Sample configurations
+└── build/                # Build artifacts
 ```
 
-### Adding New Features
-
-1. Create feature branch
-2. Implement changes
-3. Add tests
-4. Update documentation
-5. Submit pull request
-
-### Testing
+### Development Setup
 
 ```bash
-# Run all tests
-make test
+# Web development
+cd web-app
+python3 -m http.server 8082
 
-# Run tests with coverage
-make test-coverage
+# Desktop development
+cd desktop
+./run.sh
 
-# Run specific test
-go test ./internal/data/...
+# Go backend (if needed)
+go run cmd/blackjack/main.go
 ```
+
+### Key Technologies
+
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Desktop**: Tauri (Rust + Web)
+- **Backend**: Go (optional)
+- **Styling**: Modern CSS with dark theme
+- **Storage**: Browser localStorage
+
+## Features Overview
+
+### 🎯 Host Management
+- Add, edit, delete, and clone hosts
+- Hierarchical group organization
+- Color-coded tagging system
+- Search and filtering capabilities
+
+### 🔗 Tailscale Integration
+- Automatic Tailscale IP detection
+- Visual indicators with 🔗 icon
+- Connection options for local vs Tailscale
+- Protected auto-tags that can't be manually removed
+
+### 🎨 Modern UI
+- Dark theme with professional appearance
+- Responsive design for all screen sizes
+- Smooth animations and transitions
+- Intuitive navigation and controls
+
+### ⚙️ Advanced Settings
+- Integration management
+- Data export/import capabilities
+- Tag history management
+- Application preferences
+
+## Browser Compatibility
+
+- **Chrome**: 90+ (Recommended)
+- **Firefox**: 88+
+- **Safari**: 14+
+- **Edge**: 90+
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests
+4. Test thoroughly
 5. Submit a pull request
 
 ## License
@@ -285,41 +191,41 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Roadmap
 
-### v0.1 (MVP)
-- [x] Basic TUI with host management
-- [x] Group hierarchy
-- [x] SSH connection (external terminal)
-- [x] SFTP browser
-- [x] Import/export
-- [x] Configuration management
+### Current Version
+- ✅ Modern web-based GUI
+- ✅ Tabbed interface with drag-and-drop
+- ✅ Hierarchical group management
+- ✅ Advanced tagging system
+- ✅ Tailscale integration
+- ✅ Search and filtering
+- ✅ Settings and data management
 
-### v0.2 (Planned)
-- [ ] Integrated terminal widget
-- [ ] Port forwarding presets
-- [ ] Session notes and snippets
-- [ ] Bulk operations
-- [ ] Plugin system
-
-### v0.3 (Planned)
-- [ ] Windows/macOS support
-- [ ] Advanced themes
-- [ ] Cloud sync
+### Future Enhancements
+- [ ] SSH key management
+- [ ] Session recording and playback
 - [ ] Team collaboration features
-
-## Screenshots
-
-*Screenshots will be added once the TUI is fully functional*
+- [ ] Cloud synchronization
+- [ ] Mobile responsive improvements
+- [ ] Plugin system
 
 ## Support
 
-- GitHub Issues: [Report bugs and request features](https://github.com/blackjack/blackjack/issues)
-- Documentation: [Wiki](https://github.com/blackjack/blackjack/wiki)
-- Discussions: [Community discussions](https://github.com/blackjack/blackjack/discussions)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/Zmk55/BlackJack/issues)
+- **Documentation**: This README and inline code comments
+- **Discussions**: [GitHub Discussions](https://github.com/Zmk55/BlackJack/discussions)
 
 ## Changelog
 
-### v0.1.0 (Planned)
-- Initial release with core TUI functionality
-- Host and group management
-- SSH/SFTP support
-- Import/export capabilities
+### v1.0.0 (Current)
+- Modern web-based GUI replacing TUI
+- Tabbed interface with drag-and-drop support
+- Hierarchical group management with host counts
+- Advanced tagging system with automatic Tailscale detection
+- Search and filtering capabilities
+- Settings management with integrations
+- Responsive design with dark theme
+- Cross-platform compatibility
+
+---
+
+**BlackJack** - Modern SSH Management Made Simple 🚀
