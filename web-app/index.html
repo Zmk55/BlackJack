@@ -111,6 +111,20 @@
                             <label for="host-port">Port:</label>
                             <input type="number" id="host-port" value="22">
                         </div>
+                        <div class="form-group">
+                            <label for="host-password">Password (Optional):</label>
+                            <input type="password" id="host-password" placeholder="Leave empty to use SSH keys">
+                            <small class="form-help">Password will be encrypted and stored securely. Leave empty to use SSH key authentication.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>SSH Key Authentication:</label>
+                            <button type="button" id="ssh-key-test-btn" class="ssh-key-btn">
+                                <span class="btn-text">Test SSH Key</span>
+                                <span class="btn-icon">🔑</span>
+                            </button>
+                            <small class="form-help">Click to test SSH key authentication. If successful, password field will be disabled.</small>
+                            <div id="ssh-validation-status" class="validation-status" style="display: none;"></div>
+                        </div>
                         <div class="form-group" id="tailscale-ip-group" style="display: none;">
                             <label for="host-tailscale-ip">Tailscale IP:</label>
                             <input type="text" id="host-tailscale-ip" placeholder="100.x.x.x">

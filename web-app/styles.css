@@ -659,12 +659,12 @@ tr:hover {
 
 .modal-content {
     background: #2d2d2d;
-    margin: 5% auto;
+    margin: 2% auto;
     padding: 0;
     border-radius: 12px;
-    width: 800px;
+    width: 900px;
     max-width: 95%;
-    max-height: 85vh;
+    max-height: 95vh;
     border: 1px solid #404040;
     display: flex;
     flex-direction: column;
@@ -704,13 +704,13 @@ tr:hover {
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 15px;
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow: hidden;
     min-height: 0;
-    max-height: calc(85vh - 120px);
+    max-height: calc(95vh - 100px);
 }
 
 #add-host-form {
@@ -721,43 +721,45 @@ tr:hover {
 
 .form-content {
     flex: 1;
-    padding: 20px;
+    padding: 10px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 12px;
     align-content: start;
-    overflow-y: auto;
+    overflow: hidden;
     min-height: 0;
-    max-height: calc(100vh - 200px);
+    max-height: calc(95vh - 160px);
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     color: #ffffff;
     font-weight: 500;
+    font-size: 13px;
 }
 
 .form-group input {
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid #404040;
     border-radius: 4px;
     background: #1a1a1a;
     color: #ffffff;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .form-help {
     display: block;
-    margin-top: 4px;
-    font-size: 12px;
+    margin-top: 2px;
+    font-size: 11px;
     color: #888;
     font-style: italic;
+    line-height: 1.2;
 }
 
 .form-group input:focus,
@@ -782,8 +784,8 @@ tr:hover {
 .tag-management {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 100px;
+    gap: 6px;
+    max-height: 80px;
     overflow-y: auto;
 }
 
@@ -1257,3 +1259,82 @@ input:checked + .toggle-slider:before {
 #main-tab.active {
     display: flex;
 }
+
+/* SSH Key button styling */
+.ssh-key-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #374151;
+    color: #ffffff;
+    border: 1px solid #4b5563;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+}
+
+.ssh-key-btn:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+}
+
+.ssh-key-btn:disabled {
+    background: #1f2937;
+    color: #6b7280;
+    border-color: #374151;
+    cursor: not-allowed;
+}
+
+.ssh-key-btn.testing {
+    background: #1e3a8a;
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+
+.ssh-key-btn.success {
+    background: #064e3b;
+    border-color: #10b981;
+    color: #6ee7b7;
+}
+
+.ssh-key-btn.error {
+    background: #7f1d1d;
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+.btn-icon {
+    font-size: 14px;
+}
+
+/* Validation status styling */
+.validation-status {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.validation-status.testing {
+    background: #1e3a8a;
+    color: #93c5fd;
+    border: 1px solid #3b82f6;
+}
+
+.validation-status.success {
+    background: #064e3b;
+    color: #6ee7b7;
+    border: 1px solid #10b981;
+}
+
+.validation-status.error {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border: 1px solid #ef4444;
+}
+

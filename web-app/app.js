@@ -13,6 +13,7 @@ class BlackJackApp {
         this.integrations = {
             tailscale: false
         };
+        this.encryptionKey = this.generateEncryptionKey();
         
         this.init();
     }
@@ -24,6 +25,7 @@ class BlackJackApp {
         this.renderTreeView();
         this.renderHosts();
         this.setupSearch();
+        this.setupSSHValidation();
     }
 
     setupEventListeners() {
@@ -264,11 +266,15 @@ class BlackJackApp {
         // Close the connection modal first
         this.closeModal('connection-modal');
         
-        // Create SSH command with Tailscale IP
-        const sshCommand = `ssh ${host.user}@${host.tailscaleIp}`;
+        // Create a modified host object for Tailscale connection
+        const tailscaleHost = {
+            ...host,
+            address: host.tailscaleIp, // Use Tailscale IP instead of regular IP
+            name: host.name + ' (Tailscale)' // Update name to indicate Tailscale connection
+        };
         
-        // Create a new tab for the Tailscale connection
-        this.createSSHTab(host.name + ' (Tailscale)', sshCommand);
+        // Create SSH tab with the modified host
+        this.createSSHTab(tailscaleHost);
     }
 
     showConnectionModal() {
@@ -613,6 +619,7 @@ class BlackJackApp {
         const groupId = document.getElementById('host-group').value || null;
         const tags = this.currentTags || [];
         const tailscaleIp = document.getElementById('host-tailscale-ip').value || null;
+        const password = document.getElementById('host-password').value;
 
         const form = document.getElementById('add-host-form');
         const isEditing = form.dataset.editing;
@@ -642,7 +649,8 @@ class BlackJackApp {
                 port,
                 groupId,
                 tags,
-                tailscaleIp
+                tailscaleIp,
+                password: password ? this.encryptPassword(password) : null
             };
             this.hosts.push(newHost);
         }
@@ -801,45 +809,20 @@ class BlackJackApp {
         ws.onopen = () => {
             console.log('WebSocket connected');
             
-            // Check if we need password authentication
-            const needsPassword = !host.keyPath && !this.hasSSHKeys();
+            // Only use stored password if it exists, otherwise rely on SSH keys
+            const storedPassword = host.password ? this.decryptPassword(host.password) : '';
+            const sshRequest = {
+                host: host.address,
+                port: host.port || 22,
+                username: host.user,
+                password: storedPassword, // Will be empty string if no password stored
+                keyPath: host.keyPath || ''
+            };
             
-            if (needsPassword) {
-                const password = prompt(`Enter password for ${host.user}@${host.address}:`);
-                if (!password) {
-                    terminal.write('SSH connection cancelled (no password provided)\r\n');
-                    ws.close();
-                    return;
-                }
-                
-                // Send SSH connection request with password
-                const sshRequest = {
-                    host: host.address,
-                    port: host.port || 22,
-                    username: host.user,
-                    password: password,
-                    keyPath: host.keyPath || ''
-                };
-                
-                ws.send(JSON.stringify({
-                    type: 'connect',
-                    data: JSON.stringify(sshRequest)
-                }));
-            } else {
-                // Send SSH connection request without password
-                const sshRequest = {
-                    host: host.address,
-                    port: host.port || 22,
-                    username: host.user,
-                    password: '',
-                    keyPath: host.keyPath || ''
-                };
-                
-                ws.send(JSON.stringify({
-                    type: 'connect',
-                    data: JSON.stringify(sshRequest)
-                }));
-            }
+            ws.send(JSON.stringify({
+                type: 'connect',
+                data: JSON.stringify(sshRequest)
+            }));
         };
         
         ws.onmessage = (event) => {
@@ -854,6 +837,28 @@ class BlackJackApp {
                     break;
                 case 'error':
                     terminal.write(`\r\nError: ${message.data}\r\n`);
+                    
+                    // Only prompt for password if no stored password exists and authentication failed
+                    if ((message.data.includes('authentication failed') || message.data.includes('unable to authenticate')) && !host.password) {
+                        const password = prompt(`SSH key authentication failed. Enter password for ${host.user}@${host.address}:`);
+                        if (password) {
+                            // Send password authentication request
+                            ws.send(JSON.stringify({
+                                type: 'connect',
+                                data: JSON.stringify({
+                                    host: host.address,
+                                    port: host.port || 22,
+                                    username: host.user,
+                                    password: password,
+                                    keyPath: ''
+                                })
+                            }));
+                        } else {
+                            terminal.write('\r\nSSH connection cancelled\r\n');
+                        }
+                    } else if (host.password && (message.data.includes('authentication failed') || message.data.includes('unable to authenticate'))) {
+                        terminal.write('\r\nSSH connection failed. Please check your stored password or SSH key configuration.\r\n');
+                    }
                     break;
                 case 'session_closed':
                     terminal.write(`\r\n${message.data}\r\n`);
@@ -889,9 +894,53 @@ class BlackJackApp {
     }
 
     hasSSHKeys() {
-        // This is a simplified check - in a real implementation,
-        // you might want to check for actual SSH keys on the server
-        return false; // For now, always prompt for password if no keyPath
+        // Check if host has a keyPath specified
+        if (this.currentHost && this.currentHost.keyPath) {
+            return true;
+        }
+        
+        // For now, assume SSH agent or default keys are available
+        // The backend will try SSH agent and common key locations
+        return true;
+    }
+
+    // Simple encryption/decryption for passwords (in production, use proper encryption)
+    generateEncryptionKey() {
+        // Generate a simple key based on browser fingerprint
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillText('BlackJack Encryption Key', 2, 2);
+        return canvas.toDataURL().slice(-16);
+    }
+
+    encryptPassword(password) {
+        if (!password) return '';
+        // Simple XOR encryption (not secure for production)
+        let encrypted = '';
+        for (let i = 0; i < password.length; i++) {
+            encrypted += String.fromCharCode(
+                password.charCodeAt(i) ^ this.encryptionKey.charCodeAt(i % this.encryptionKey.length)
+            );
+        }
+        return btoa(encrypted);
+    }
+
+    decryptPassword(encryptedPassword) {
+        if (!encryptedPassword) return '';
+        try {
+            const decoded = atob(encryptedPassword);
+            let decrypted = '';
+            for (let i = 0; i < decoded.length; i++) {
+                decrypted += String.fromCharCode(
+                    decoded.charCodeAt(i) ^ this.encryptionKey.charCodeAt(i % this.encryptionKey.length)
+                );
+            }
+            return decrypted;
+        } catch (e) {
+            return '';
+        }
     }
 
     switchTab(tabId) {
@@ -977,11 +1026,28 @@ class BlackJackApp {
 
 
     exportHosts() {
+        // Check if any hosts have passwords
+        const hasPasswords = this.hosts.some(host => host.password);
+        
+        if (hasPasswords) {
+            const confirmed = confirm(
+                '⚠️ WARNING: Your configuration contains stored passwords!\n\n' +
+                'Passwords will be exported in encrypted form, but the encryption key is browser-specific.\n' +
+                'This file should be kept in a secure location and only imported on trusted devices.\n\n' +
+                'Do you want to continue with the export?'
+            );
+            if (!confirmed) return;
+        }
+        
         // Create JSON export
         const exportData = {
             version: '1.0',
             exportDate: new Date().toISOString(),
-            hosts: this.hosts
+            hosts: this.hosts,
+            groups: this.groups,
+            tags: this.tags,
+            integrations: this.integrations,
+            hasPasswords: hasPasswords
         };
         
         // Create and download file
@@ -991,7 +1057,7 @@ class BlackJackApp {
         
         const link = document.createElement('a');
         link.href = url;
-        link.download = `blackjack-hosts-${new Date().toISOString().split('T')[0]}.json`;
+        link.download = `blackjack-config-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1019,25 +1085,34 @@ class BlackJackApp {
                         return;
                     }
                     
-                    // Ask user what to do with existing hosts
-                    const action = confirm(
-                        `Found ${importData.hosts.length} hosts in the file.\n\n` +
-                        `Click OK to ADD to existing hosts\n` +
-                        `Click Cancel to REPLACE all hosts`
-                    );
+                    // Validate the import data
+                    if (!this.validateImportData(importData)) {
+                        return;
+                    }
                     
-                    if (action) {
-                        // Add to existing hosts
-                        this.hosts = [...this.hosts, ...importData.hosts];
-                        alert(`Added ${importData.hosts.length} hosts to your collection!`);
+                    // Check if current config is not empty
+                    const hasExistingData = this.hosts.length > 0 || this.groups.length > 0 || this.tags.length > 0;
+                    
+                    if (hasExistingData) {
+                        // Show merge/overwrite options
+                        const choice = this.showImportOptions(importData);
+                        if (choice === 'cancel') return;
+                        
+                        if (choice === 'overwrite') {
+                            this.performOverwrite(importData);
+                        } else if (choice === 'merge') {
+                            this.performMerge(importData);
+                        }
                     } else {
-                        // Replace all hosts
-                        this.hosts = importData.hosts;
-                        alert(`Replaced all hosts with ${importData.hosts.length} imported hosts!`);
+                        // No existing data, just import everything
+                        this.performOverwrite(importData);
                     }
                     
                     this.saveHosts();
+                    this.saveGroups();
+                    this.saveTags();
                     this.renderHosts();
+                    this.renderTreeView();
                     
                 } catch (error) {
                     alert('Error reading file. Please make sure it\'s a valid JSON file.');
@@ -1047,6 +1122,117 @@ class BlackJackApp {
             reader.readAsText(file);
         };
         input.click();
+    }
+
+    validateImportData(importData) {
+        // Check if it's a valid BlackJack config file
+        if (!importData.hosts || !Array.isArray(importData.hosts)) {
+            alert('Invalid file format. Please select a valid BlackJack export file.');
+            return false;
+        }
+        
+        // Validate hosts structure
+        for (const host of importData.hosts) {
+            if (!host.name || !host.address || !host.user) {
+                alert('Invalid host data found. Some hosts are missing required fields (name, address, user).');
+                return false;
+            }
+        }
+        
+        // Validate groups if present
+        if (importData.groups && !Array.isArray(importData.groups)) {
+            alert('Invalid groups data in import file.');
+            return false;
+        }
+        
+        // Validate tags if present
+        if (importData.tags && !Array.isArray(importData.tags)) {
+            alert('Invalid tags data in import file.');
+            return false;
+        }
+        
+        return true;
+    }
+
+    showImportOptions(importData) {
+        const hostCount = importData.hosts ? importData.hosts.length : 0;
+        const groupCount = importData.groups ? importData.groups.length : 0;
+        const tagCount = importData.tags ? importData.tags.length : 0;
+        
+        const message = `Import Configuration\n\n` +
+            `Found: ${hostCount} hosts, ${groupCount} groups, ${tagCount} tags\n\n` +
+            `Current: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags\n\n` +
+            `What would you like to do?\n\n` +
+            `• MERGE: Add new items to existing data\n` +
+            `• OVERWRITE: Replace all data with imported data\n` +
+            `• CANCEL: Don't import anything`;
+        
+        const choice = prompt(message + '\n\nEnter: merge, overwrite, or cancel');
+        
+        if (!choice) return 'cancel';
+        
+        const normalizedChoice = choice.toLowerCase().trim();
+        if (['merge', 'overwrite', 'cancel'].includes(normalizedChoice)) {
+            return normalizedChoice;
+        }
+        
+        alert('Invalid choice. Please enter: merge, overwrite, or cancel');
+        return this.showImportOptions(importData);
+    }
+
+    performOverwrite(importData) {
+        this.hosts = importData.hosts || [];
+        this.groups = importData.groups || [];
+        this.tags = importData.tags || [];
+        this.integrations = importData.integrations || { tailscale: false };
+        
+        alert(`Configuration overwritten successfully!\n\n` +
+              `Imported: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags`);
+    }
+
+    performMerge(importData) {
+        let addedHosts = 0;
+        let addedGroups = 0;
+        let addedTags = 0;
+        
+        // Merge hosts (avoid duplicates by name)
+        if (importData.hosts) {
+            for (const host of importData.hosts) {
+                if (!this.hosts.find(h => h.name === host.name)) {
+                    this.hosts.push(host);
+                    addedHosts++;
+                }
+            }
+        }
+        
+        // Merge groups (avoid duplicates by name)
+        if (importData.groups) {
+            for (const group of importData.groups) {
+                if (!this.groups.find(g => g.name === group.name)) {
+                    this.groups.push(group);
+                    addedGroups++;
+                }
+            }
+        }
+        
+        // Merge tags (avoid duplicates by name)
+        if (importData.tags) {
+            for (const tag of importData.tags) {
+                if (!this.tags.find(t => t.name === tag.name)) {
+                    this.tags.push(tag);
+                    addedTags++;
+                }
+            }
+        }
+        
+        // Merge integrations
+        if (importData.integrations) {
+            this.integrations = { ...this.integrations, ...importData.integrations };
+        }
+        
+        alert(`Configuration merged successfully!\n\n` +
+              `Added: ${addedHosts} hosts, ${addedGroups} groups, ${addedTags} tags\n` +
+              `Total: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags`);
     }
 
     showQuickHostMenu() {
@@ -1119,6 +1305,7 @@ class BlackJackApp {
         document.getElementById('host-address').value = host.address;
         document.getElementById('host-user').value = host.user;
         document.getElementById('host-port').value = host.port;
+        document.getElementById('host-password').value = host.password ? this.decryptPassword(host.password) : '';
         
         // Debug group selection
         console.log('Editing host:', host);
@@ -1504,6 +1691,155 @@ class BlackJackApp {
             clearBtn.style.display = 'none';
             this.renderHosts();
         });
+    }
+
+    setupSSHValidation() {
+        // Add event listener for SSH key test button
+        const sshTestBtn = document.getElementById('ssh-key-test-btn');
+        
+        if (sshTestBtn) {
+            sshTestBtn.addEventListener('click', () => {
+                this.startSSHValidation();
+            });
+        }
+    }
+
+    startSSHValidation() {
+        const address = document.getElementById('host-address').value;
+        const user = document.getElementById('host-user').value;
+        const port = document.getElementById('host-port').value || 22;
+        
+        if (!address || !user) {
+            this.showValidationStatus('Please fill in host address and user before testing SSH keys.', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('ssh-key-test-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.className = 'ssh-key-btn testing';
+            btn.querySelector('.btn-text').textContent = 'Testing...';
+            btn.querySelector('.btn-icon').textContent = '⏳';
+        }
+        
+        this.showValidationStatus('Testing SSH key authentication...', 'testing');
+        
+        // Test SSH connection in background
+        this.testSSHConnection(address, user, port);
+    }
+
+    async testSSHConnection(address, user, port) {
+        try {
+            // Create a test WebSocket connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/ssh`;
+            
+            const ws = new WebSocket(wsUrl);
+            
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    ws.close();
+                    reject(new Error('Connection timeout'));
+                }, 10000); // 10 second timeout
+                
+                ws.onopen = () => {
+                    // Send SSH connection request with no password
+                    const sshRequest = {
+                        host: address,
+                        port: parseInt(port),
+                        username: user,
+                        password: '', // No password, rely on SSH keys
+                        keyPath: ''
+                    };
+                    
+                    ws.send(JSON.stringify({
+                        type: 'connect',
+                        data: JSON.stringify(sshRequest)
+                    }));
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    
+                    if (message.type === 'connected') {
+                        clearTimeout(timeout);
+                        ws.close();
+                        this.updateButtonState('success', 'Enabled', '✅');
+                        this.showValidationStatus('✅ SSH key authentication successful! Password field will be disabled.', 'success');
+                        this.disablePasswordField();
+                        resolve(true);
+                    } else if (message.type === 'error') {
+                        clearTimeout(timeout);
+                        ws.close();
+                        this.updateButtonState('error', 'Failed', '❌');
+                        if (message.data.includes('authentication failed') || message.data.includes('unable to authenticate')) {
+                            this.showValidationStatus('❌ SSH key authentication failed. The host may not have your public key in authorized_keys, or SSH keys are not properly configured.', 'error');
+                        } else {
+                            this.showValidationStatus(`❌ Connection failed: ${message.data}`, 'error');
+                        }
+                        resolve(false);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    clearTimeout(timeout);
+                    ws.close();
+                    this.updateButtonState('error', 'Failed', '❌');
+                    this.showValidationStatus('❌ Connection error. Please check host address and network connectivity.', 'error');
+                    reject(error);
+                };
+                
+                ws.onclose = () => {
+                    clearTimeout(timeout);
+                };
+            });
+        } catch (error) {
+            this.updateButtonState('error', 'Failed', '❌');
+            this.showValidationStatus(`❌ Validation error: ${error.message}`, 'error');
+        }
+    }
+
+    showValidationStatus(message, type) {
+        const statusDiv = document.getElementById('ssh-validation-status');
+        if (statusDiv) {
+            statusDiv.textContent = message;
+            statusDiv.className = `validation-status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+    }
+
+    hideValidationStatus() {
+        const statusDiv = document.getElementById('ssh-validation-status');
+        if (statusDiv) {
+            statusDiv.style.display = 'none';
+        }
+    }
+
+    disablePasswordField() {
+        const passwordField = document.getElementById('host-password');
+        if (passwordField) {
+            passwordField.disabled = true;
+            passwordField.placeholder = 'SSH keys will be used for authentication';
+            passwordField.value = '';
+        }
+    }
+
+    enablePasswordField() {
+        const passwordField = document.getElementById('host-password');
+        if (passwordField) {
+            passwordField.disabled = false;
+            passwordField.placeholder = 'Leave empty to use SSH keys';
+        }
+    }
+
+    updateButtonState(state, text, icon) {
+        const btn = document.getElementById('ssh-key-test-btn');
+        if (btn) {
+            btn.disabled = (state === 'success');
+            btn.className = `ssh-key-btn ${state}`;
+            btn.querySelector('.btn-text').textContent = text;
+            btn.querySelector('.btn-icon').textContent = icon;
+        }
     }
 
     matchesSearch(host, query) {
