@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 // WebSocket upgrader
@@ -223,11 +225,50 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 	authMethods := []ssh.AuthMethod{}
 
 	// 1. Try SSH agent first (most common)
-	authMethods = append(authMethods, ssh.PublicKeys())
+	if agentAuth := agentAuth(); agentAuth != nil {
+		log.Printf("Using SSH agent authentication for %s@%s", req.Username, req.Host)
+		authMethods = append(authMethods, agentAuth)
+	} else {
+		log.Printf("SSH agent not available for %s@%s", req.Username, req.Host)
+		// Fallback to common SSH key files
+		homeDir := os.Getenv("HOME")
+		if homeDir == "" {
+			homeDir = os.Getenv("USERPROFILE") // Windows fallback
+		}
 
-	// 2. Try password authentication if provided
+		commonKeyPaths := []string{
+			homeDir + "/.ssh/id_ed25519",
+			homeDir + "/.ssh/id_rsa",
+			homeDir + "/.ssh/id_ecdsa",
+			homeDir + "/.ssh/id_dsa",
+		}
+
+		for _, keyPath := range commonKeyPaths {
+			if _, err := os.Stat(keyPath); err == nil {
+				key, err := os.ReadFile(keyPath)
+				if err != nil {
+					log.Printf("Failed to read key file %s: %v", keyPath, err)
+					continue
+				}
+
+				signer, err := ssh.ParsePrivateKey(key)
+				if err != nil {
+					log.Printf("Failed to parse key file %s: %v", keyPath, err)
+					continue
+				}
+
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+				log.Printf("Added SSH key: %s", keyPath)
+			}
+		}
+	}
+
+	// 2. Try password authentication only if provided
 	if req.Password != "" {
+		log.Printf("Adding password authentication for %s@%s", req.Username, req.Host)
 		authMethods = append(authMethods, ssh.Password(req.Password))
+	} else {
+		log.Printf("No password provided for %s@%s, relying on SSH keys", req.Username, req.Host)
 	}
 
 	// 3. Try key file if provided
@@ -399,4 +440,19 @@ func sendMessage(conn *websocket.Conn, msgType, data string) {
 
 func sendError(conn *websocket.Conn, message string) {
 	sendMessage(conn, "error", message)
+}
+
+func agentAuth() ssh.AuthMethod {
+	// Check if SSH agent is available
+	if sshAgentSock := os.Getenv("SSH_AUTH_SOCK"); sshAgentSock != "" {
+		conn, err := net.Dial("unix", sshAgentSock)
+		if err != nil {
+			log.Printf("Failed to connect to SSH agent: %v", err)
+			return nil
+		}
+		agentClient := agent.NewClient(conn)
+		return ssh.PublicKeysCallback(agentClient.Signers)
+	}
+	log.Printf("SSH_AUTH_SOCK not set, SSH agent not available")
+	return nil
 }
