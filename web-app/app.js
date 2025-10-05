@@ -801,19 +801,45 @@ class BlackJackApp {
         ws.onopen = () => {
             console.log('WebSocket connected');
             
-            // Send SSH connection request
-            const sshRequest = {
-                host: host.address,
-                port: host.port || 22,
-                username: host.user,
-                password: '', // For now, we'll use SSH keys or agent
-                keyPath: '' // Could be enhanced to support key files
-            };
+            // Check if we need password authentication
+            const needsPassword = !host.keyPath && !this.hasSSHKeys();
             
-            ws.send(JSON.stringify({
-                type: 'connect',
-                data: JSON.stringify(sshRequest)
-            }));
+            if (needsPassword) {
+                const password = prompt(`Enter password for ${host.user}@${host.address}:`);
+                if (!password) {
+                    terminal.write('SSH connection cancelled (no password provided)\r\n');
+                    ws.close();
+                    return;
+                }
+                
+                // Send SSH connection request with password
+                const sshRequest = {
+                    host: host.address,
+                    port: host.port || 22,
+                    username: host.user,
+                    password: password,
+                    keyPath: host.keyPath || ''
+                };
+                
+                ws.send(JSON.stringify({
+                    type: 'connect',
+                    data: JSON.stringify(sshRequest)
+                }));
+            } else {
+                // Send SSH connection request without password
+                const sshRequest = {
+                    host: host.address,
+                    port: host.port || 22,
+                    username: host.user,
+                    password: '',
+                    keyPath: host.keyPath || ''
+                };
+                
+                ws.send(JSON.stringify({
+                    type: 'connect',
+                    data: JSON.stringify(sshRequest)
+                }));
+            }
         };
         
         ws.onmessage = (event) => {
@@ -828,6 +854,13 @@ class BlackJackApp {
                     break;
                 case 'error':
                     terminal.write(`\r\nError: ${message.data}\r\n`);
+                    break;
+                case 'session_closed':
+                    terminal.write(`\r\n${message.data}\r\n`);
+                    // Close the tab after a short delay
+                    setTimeout(() => {
+                        this.closeTab(tabId);
+                    }, 1000);
                     break;
             }
         };
@@ -853,6 +886,12 @@ class BlackJackApp {
         // Store WebSocket reference
         this.websockets = this.websockets || {};
         this.websockets[tabId] = ws;
+    }
+
+    hasSSHKeys() {
+        // This is a simplified check - in a real implementation,
+        // you might want to check for actual SSH keys on the server
+        return false; // For now, always prompt for password if no keyPath
     }
 
     switchTab(tabId) {
