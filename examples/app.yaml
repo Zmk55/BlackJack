@@ -1,0 +1,23 @@
+theme: "matrix"
+keybinds:
+  connect: "c"
+  sftp: "s"
+  search: "/"
+  new: "n"
+  edit: "e"
+  delete: "d"
+  help: "?"
+  settings: "F10"
+  keymanager: "F2"
+  importexport: "F8"
+terminal:
+  external: true
+  command: "$TERMINAL -e"
+ssh:
+  forward_agent: true
+  strict_hostkey: true
+  connect_timeout: 30
+sftp:
+  transfer_concurrency: 4
+  buffer_size: 32768
+telemetry: false

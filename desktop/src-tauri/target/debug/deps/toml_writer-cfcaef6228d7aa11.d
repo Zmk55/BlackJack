@@ -1,0 +1,12 @@
+/home/tim/Github/BlackJack/desktop/src-tauri/target/debug/deps/toml_writer-cfcaef6228d7aa11.d: /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/lib.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/integer.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/key.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/string.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/value.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/write.rs
+
+/home/tim/Github/BlackJack/desktop/src-tauri/target/debug/deps/libtoml_writer-cfcaef6228d7aa11.rlib: /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/lib.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/integer.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/key.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/string.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/value.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/write.rs
+
+/home/tim/Github/BlackJack/desktop/src-tauri/target/debug/deps/libtoml_writer-cfcaef6228d7aa11.rmeta: /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/lib.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/integer.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/key.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/string.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/value.rs /home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/write.rs
+
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/lib.rs:
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/integer.rs:
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/key.rs:
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/string.rs:
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/value.rs:
+/home/tim/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_writer-1.0.3/src/write.rs:

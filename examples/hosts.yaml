@@ -1,0 +1,56 @@
+version: 1
+hosts:
+  - id: "web-01"
+    name: "Web 01"
+    address: "10.0.1.15"
+    port: 22
+    user: "ubuntu"
+    auth:
+      type: "key"
+      key_id: "ed25519_main"
+    groups: ["prod", "web"]
+    tags: ["ubuntu", "nginx"]
+    notes: "Primary frontend server"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "web-02"
+    name: "Web 02"
+    address: "10.0.1.16"
+    port: 22
+    user: "ubuntu"
+    auth:
+      type: "key"
+      key_id: "ed25519_main"
+    groups: ["prod", "web"]
+    tags: ["ubuntu", "nginx"]
+    notes: "Secondary frontend server"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "db-01"
+    name: "Database 01"
+    address: "10.0.2.10"
+    port: 22
+    user: "postgres"
+    auth:
+      type: "key"
+      key_id: "ed25519_main"
+    groups: ["prod", "database"]
+    tags: ["postgres", "ubuntu"]
+    notes: "Primary database server"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "dev-web"
+    name: "Dev Web Server"
+    address: "192.168.1.100"
+    port: 22
+    user: "developer"
+    auth:
+      type: "agent"
+    groups: ["dev", "web"]
+    tags: ["ubuntu", "development"]
+    notes: "Development web server"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"

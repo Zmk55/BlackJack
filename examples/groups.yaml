@@ -1,0 +1,29 @@
+version: 1
+groups:
+  - id: "prod"
+    name: "Production"
+    parent: null
+    description: "Production environment servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "dev"
+    name: "Development"
+    parent: null
+    description: "Development environment servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "web"
+    name: "Web Servers"
+    parent: "prod"
+    description: "Web application servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "database"
+    name: "Database Servers"
+    parent: "prod"
+    description: "Database servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"

@@ -1,0 +1,29 @@
+version: 1
+tags:
+  - id: "ubuntu"
+    name: "Ubuntu"
+    color: "#E95420"
+    description: "Ubuntu Linux servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "nginx"
+    name: "Nginx"
+    color: "#009639"
+    description: "Nginx web servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "postgres"
+    name: "PostgreSQL"
+    color: "#336791"
+    description: "PostgreSQL database servers"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
+    
+  - id: "development"
+    name: "Development"
+    color: "#FF6B6B"
+    description: "Development environment"
+    created: "2024-01-15T10:30:00Z"
+    updated: "2024-01-15T10:30:00Z"
