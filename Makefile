@@ -70,6 +70,36 @@ run:
 	@echo "Running $(BINARY_NAME)..."
 	go run ./cmd/blackjack
 
+# Web server targets
+web-server:
+	@echo "Starting BlackJack Web Server..."
+	cd web-server && go run main.go
+
+web-server-build:
+	@echo "Building BlackJack Web Server..."
+	cd web-server && go build -o blackjack-server main.go
+
+web-server-clean:
+	@echo "Cleaning web server build artifacts..."
+	cd web-server && rm -f blackjack-server
+
+# Unified startup script
+start:
+	@echo "Starting BlackJack with unified script..."
+	./start.sh
+
+start-web:
+	@echo "Starting BlackJack Web Application..."
+	./start.sh -m web
+
+start-desktop:
+	@echo "Starting BlackJack Desktop Application..."
+	./start.sh -m desktop
+
+start-tui:
+	@echo "Starting BlackJack Terminal UI..."
+	./start.sh -m tui
+
 # Help
 help:
 	@echo "Available targets:"
@@ -83,4 +113,15 @@ help:
 	@echo "  clean        - Clean build artifacts"
 	@echo "  dev-setup    - Setup development environment"
 	@echo "  run          - Run the application"
+	@echo ""
+	@echo "Web Server targets:"
+	@echo "  web-server   - Start web server (development)"
+	@echo "  web-server-build - Build web server binary"
+	@echo "  web-server-clean - Clean web server artifacts"
+	@echo ""
+	@echo "Unified startup:"
+	@echo "  start        - Start with unified script (interactive)"
+	@echo "  start-web    - Start web application"
+	@echo "  start-desktop- Start desktop application"
+	@echo "  start-tui    - Start terminal UI"
 	@echo "  help         - Show this help"

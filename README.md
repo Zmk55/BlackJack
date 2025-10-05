@@ -16,26 +16,64 @@ A modern web-based SSH management application with tabbed interface, host manage
 
 ## Quick Start
 
-### Web Application (Recommended)
+### 🚀 Unified Startup (Recommended)
+
+The easiest way to start BlackJack is using the unified startup script:
 
 ```bash
 # Clone the repository
 git clone https://github.com/Zmk55/BlackJack.git
 cd BlackJack
 
-# Start the web application
-cd web-app
-python3 -m http.server 8082
+# Start with unified script (interactive)
+./start.sh
 
-# Open your browser to http://localhost:8082
+# Or start specific modes:
+./start.sh -m web          # Web application (default)
+./start.sh -m desktop      # Desktop application
+./start.sh -m tui          # Terminal UI
+./start.sh -p 8080         # Custom port
 ```
 
-### Desktop Application (Tauri)
+### 🌐 Web Application
 
 ```bash
-# Prerequisites: Rust and Node.js
+# Option 1: Using unified script (recommended)
+./start.sh -m web
+
+# Option 2: Using Makefile
+make start-web
+
+# Option 3: Manual start
+cd web-server
+./run.sh
+```
+
+### 🖥️ Desktop Application
+
+```bash
+# Option 1: Using unified script
+./start.sh -m desktop
+
+# Option 2: Using Makefile
+make start-desktop
+
+# Option 3: Manual start
 cd desktop
 ./run.sh
+```
+
+### 💻 Terminal UI
+
+```bash
+# Option 1: Using unified script
+./start.sh -m tui
+
+# Option 2: Using Makefile
+make start-tui
+
+# Option 3: Manual start
+make run
 ```
 
 ## Usage
