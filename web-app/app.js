@@ -1763,38 +1763,45 @@ class BlackJackApp {
         const currentPath = targetDirectory || (pane === 'local' ? (this.currentLocalPaths[tabId] || '/home/tim') : (this.currentSFTPPaths[tabId] || '/'));
         
         const modal = document.createElement('div');
-        modal.className = 'modal';
+        modal.className = 'create-file-modal';
         modal.id = `create-file-${tabId}`;
         modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Create New File</h3>
-                    <button class="modal-close" onclick="app.closeCreateFileModal('${tabId}')">×</button>
+            <div class="create-file-content">
+                <div class="create-file-header">
+                    <h3 class="create-file-title">Create New File</h3>
+                    <button class="create-file-close" onclick="app.closeCreateFileModal('${tabId}')">×</button>
                 </div>
-                <div class="modal-body">
-                    <div class="create-file-info">
-                        <p><strong>Creating file on:</strong> ${pane === 'local' ? 'Local Machine' : 'Remote Machine'}</p>
-                        <p><strong>Target directory:</strong> ${currentPath}</p>
-                    </div>
-                    <div class="form-group">
-                        <label for="filename-${tabId}">Filename:</label>
-                        <input type="text" id="filename-${tabId}" class="form-input" placeholder="Enter filename (e.g., example.txt)" autofocus />
-                    </div>
+                <div class="create-file-info">
+                    <p><span class="create-file-info-icon">🖥️</span><strong>Creating file on:</strong> ${pane === 'local' ? 'Local Machine' : 'Remote Machine'}</p>
+                    <p><span class="create-file-info-icon">📁</span><strong>Target directory:</strong> ${currentPath}</p>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" onclick="app.createFileFromModal('${tabId}', '${pane}', '${currentPath}')">Create File</button>
-                    <button class="btn btn-secondary" onclick="app.closeCreateFileModal('${tabId}')">Cancel</button>
+                <div class="form-group">
+                    <label for="filename-${tabId}">Filename</label>
+                    <input type="text" id="filename-${tabId}" class="form-input" placeholder="Enter filename (e.g., example.txt)" autofocus />
+                </div>
+                <div class="create-file-actions">
+                    <button class="create-file-btn create-file-btn-secondary" onclick="app.closeCreateFileModal('${tabId}')">Cancel</button>
+                    <button class="create-file-btn create-file-btn-primary" onclick="app.createFileFromModal('${tabId}', '${pane}', '${currentPath}')">Create File</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
-        modal.style.display = 'block';
         
-        // Focus the input field
+        // Focus the input field and add Enter key support
         setTimeout(() => {
             const input = document.getElementById(`filename-${tabId}`);
-            if (input) input.focus();
+            if (input) {
+                input.focus();
+                
+                // Add Enter key support
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.createFileFromModal(tabId, pane, currentPath);
+                    }
+                });
+            }
         }, 100);
     }
 
@@ -2026,34 +2033,290 @@ class BlackJackApp {
     }
 
     openFileEditor(tabId, filePath, content, isRemote) {
-        // Create editor modal
+        // Remove any existing editor
+        this.closeFileEditor(tabId);
+        
+        const fileName = filePath.split('/').pop();
+        const fileExtension = fileName.split('.').pop().toLowerCase();
+        const fileSize = new Blob([content]).size;
+        const lineCount = content.split('\n').length;
+        const charCount = content.length;
+        
+        // Determine file type icon
+        const getFileIcon = (ext) => {
+            const icons = {
+                'js': '📄', 'ts': '📄', 'jsx': '⚛️', 'tsx': '⚛️',
+                'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                'html': '🌐', 'css': '🎨', 'scss': '🎨', 'sass': '🎨',
+                'json': '📋', 'xml': '📋', 'yaml': '📋', 'yml': '📋',
+                'md': '📝', 'txt': '📄', 'log': '📊', 'sql': '🗄️',
+                'sh': '🐚', 'bash': '🐚', 'zsh': '🐚', 'fish': '🐚',
+                'go': '🐹', 'rs': '🦀', 'php': '🐘', 'rb': '💎',
+                'swift': '🦉', 'kt': '🟣', 'scala': '🔴', 'r': '📊',
+                'dockerfile': '🐳', 'docker': '🐳', 'yml': '📋'
+            };
+            return icons[ext] || '📄';
+        };
+        
         const modal = document.createElement('div');
-        modal.className = 'modal';
+        modal.className = 'file-editor-modal';
         modal.id = `editor-${tabId}`;
         modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Edit File: ${filePath.split('/').pop()}</h3>
-                    <button class="modal-close" onclick="app.closeFileEditor('${tabId}')">×</button>
+            <div class="file-editor-content">
+                <div class="file-editor-header">
+                    <div class="file-editor-title">
+                        <span class="file-editor-title-icon">${getFileIcon(fileExtension)}</span>
+                        <span>Edit File: ${fileName}</span>
+                    </div>
+                    <div class="file-editor-info">
+                        <span>📁 ${filePath}</span>
+                        <span>${isRemote ? '🌐 Remote' : '💻 Local'}</span>
+                    </div>
+                    <button class="file-editor-close" onclick="app.closeFileEditor('${tabId}')">×</button>
                 </div>
-                <div class="modal-body">
-                    <textarea id="file-content-${tabId}" style="width: 100%; height: 400px; font-family: monospace;">${content}</textarea>
+                
+                <div class="file-editor-toolbar">
+                    <div class="file-editor-toolbar-left">
+                        <button class="file-editor-btn file-editor-btn-primary" onclick="app.saveFile('${tabId}', '${filePath}', ${isRemote})">
+                            💾 Save
+                        </button>
+                        <button class="file-editor-btn file-editor-btn-secondary" onclick="app.reloadFile('${tabId}', '${filePath}', ${isRemote})">
+                            🔄 Reload
+                        </button>
+                        <button class="file-editor-btn file-editor-btn-secondary" onclick="app.formatCode('${tabId}', '${fileExtension}')">
+                            ✨ Format
+                        </button>
+                        <button class="file-editor-btn file-editor-btn-secondary" onclick="app.findReplace('${tabId}')">
+                            🔍 Find & Replace
+                        </button>
+                    </div>
+                    <div class="file-editor-toolbar-right">
+                        <div class="file-editor-status">
+                            <div class="file-editor-status-item">
+                                <span>📏</span>
+                                <span id="line-count-${tabId}">${lineCount} lines</span>
+                            </div>
+                            <div class="file-editor-status-item">
+                                <span>📝</span>
+                                <span id="char-count-${tabId}">${charCount} chars</span>
+                            </div>
+                            <div class="file-editor-status-item">
+                                <span>💾</span>
+                                <span id="file-size-${tabId}">${this.formatFileSize(fileSize)}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" onclick="app.saveFile('${tabId}', '${filePath}', ${isRemote})">Save</button>
-                    <button class="btn btn-secondary" onclick="app.closeFileEditor('${tabId}')">Cancel</button>
+                
+                <div class="file-editor-body">
+                    <div class="file-editor-textarea-container">
+                        <textarea 
+                            id="file-content-${tabId}" 
+                            class="file-editor-textarea" 
+                            placeholder="Enter file content..."
+                            spellcheck="false"
+                        ></textarea>
+                    </div>
+                </div>
+                
+                <div class="file-editor-footer">
+                    <div class="file-editor-actions">
+                        <button class="file-editor-btn file-editor-btn-primary" onclick="app.saveFile('${tabId}', '${filePath}', ${isRemote})">
+                            💾 Save File
+                        </button>
+                        <button class="file-editor-btn file-editor-btn-secondary" onclick="app.closeFileEditor('${tabId}')">
+                            ❌ Cancel
+                        </button>
+                    </div>
+                    <div class="file-editor-shortcuts">
+                        <div class="file-editor-shortcut">
+                            <span>Save:</span>
+                            <span class="file-editor-shortcut-key">Ctrl+S</span>
+                        </div>
+                        <div class="file-editor-shortcut">
+                            <span>Find:</span>
+                            <span class="file-editor-shortcut-key">Ctrl+F</span>
+                        </div>
+                        <div class="file-editor-shortcut">
+                            <span>Format:</span>
+                            <span class="file-editor-shortcut-key">Ctrl+Shift+F</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
-        modal.style.display = 'block';
+        
+        // Set content and add enhanced functionality
+        setTimeout(() => {
+            const textarea = document.getElementById(`file-content-${tabId}`);
+            if (textarea) {
+                textarea.value = content;
+                
+                // Enhanced keyboard shortcuts
+                textarea.addEventListener('keydown', (e) => {
+                    // Save shortcuts
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        this.saveFile(tabId, filePath, isRemote);
+                    }
+                    // Find shortcut
+                    else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                        e.preventDefault();
+                        this.findReplace(tabId);
+                    }
+                    // Format shortcut
+                    else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+                        e.preventDefault();
+                        this.formatCode(tabId, fileExtension);
+                    }
+                    // Tab handling
+                    else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const value = textarea.value;
+                        textarea.value = value.substring(0, start) + '    ' + value.substring(end);
+                        textarea.selectionStart = textarea.selectionEnd = start + 4;
+                    }
+                });
+                
+                // Auto-resize and update stats
+                textarea.addEventListener('input', () => {
+                    this.updateEditorStats(tabId);
+                    this.autoResizeTextarea(textarea);
+                });
+                
+                // Focus the textarea
+                textarea.focus();
+                this.autoResizeTextarea(textarea);
+            }
+        }, 100);
     }
 
     closeFileEditor(tabId) {
         const modal = document.getElementById(`editor-${tabId}`);
         if (modal) {
             modal.remove();
+        }
+    }
+
+    updateEditorStats(tabId) {
+        const textarea = document.getElementById(`file-content-${tabId}`);
+        if (!textarea) return;
+        
+        const content = textarea.value;
+        const lineCount = content.split('\n').length;
+        const charCount = content.length;
+        const fileSize = new Blob([content]).size;
+        
+        const lineCountEl = document.getElementById(`line-count-${tabId}`);
+        const charCountEl = document.getElementById(`char-count-${tabId}`);
+        const fileSizeEl = document.getElementById(`file-size-${tabId}`);
+        
+        if (lineCountEl) lineCountEl.textContent = `${lineCount} lines`;
+        if (charCountEl) charCountEl.textContent = `${charCount} chars`;
+        if (fileSizeEl) fileSizeEl.textContent = this.formatFileSize(fileSize);
+    }
+
+    autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(200, textarea.scrollHeight) + 'px';
+    }
+
+    reloadFile(tabId, filePath, isRemote) {
+        if (isRemote) {
+            this.editRemoteFile(tabId, filePath);
+        } else {
+            this.editLocalFile(tabId, filePath);
+        }
+    }
+
+    formatCode(tabId, fileExtension) {
+        const textarea = document.getElementById(`file-content-${tabId}`);
+        if (!textarea) return;
+        
+        let content = textarea.value;
+        
+        // Basic formatting based on file type
+        switch (fileExtension) {
+            case 'json':
+                try {
+                    const parsed = JSON.parse(content);
+                    content = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    alert('Invalid JSON format');
+                    return;
+                }
+                break;
+            case 'html':
+                // Basic HTML formatting
+                content = content
+                    .replace(/></g, '>\n<')
+                    .replace(/^\s+|\s+$/gm, '')
+                    .split('\n')
+                    .map(line => {
+                        const depth = (line.match(/</g) || []).length - (line.match(/<\//g) || []).length;
+                        return '  '.repeat(Math.max(0, depth)) + line.trim();
+                    })
+                    .join('\n');
+                break;
+            case 'css':
+                // Basic CSS formatting
+                content = content
+                    .replace(/;/g, ';\n')
+                    .replace(/\{/g, ' {\n')
+                    .replace(/\}/g, '\n}\n')
+                    .split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .join('\n');
+                break;
+            case 'js':
+            case 'ts':
+                // Basic JavaScript formatting
+                content = content
+                    .replace(/;/g, ';\n')
+                    .replace(/\{/g, ' {\n')
+                    .replace(/\}/g, '\n}\n')
+                    .replace(/,/g, ',\n')
+                    .split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .join('\n');
+                break;
+            default:
+                // Generic formatting - just clean up whitespace
+                content = content
+                    .split('\n')
+                    .map(line => line.trim())
+                    .join('\n');
+        }
+        
+        textarea.value = content;
+        this.updateEditorStats(tabId);
+    }
+
+    findReplace(tabId) {
+        const textarea = document.getElementById(`file-content-${tabId}`);
+        if (!textarea) return;
+        
+        const findText = prompt('Find:', '');
+        if (!findText) return;
+        
+        const replaceText = prompt('Replace with:', '');
+        if (replaceText === null) return;
+        
+        const content = textarea.value;
+        const newContent = content.replace(new RegExp(findText, 'g'), replaceText);
+        
+        if (newContent !== content) {
+            textarea.value = newContent;
+            this.updateEditorStats(tabId);
+            alert(`Replaced ${(content.match(new RegExp(findText, 'g')) || []).length} occurrences`);
+        } else {
+            alert('No matches found');
         }
     }
 

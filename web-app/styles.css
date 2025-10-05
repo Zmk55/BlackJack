@@ -1620,54 +1620,445 @@ input:checked + .toggle-slider:before {
 }
 
 /* Create File Modal Styles */
-.create-file-info {
-    background-color: #2a2a2a;
-    border: 1px solid #444;
+.create-file-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.create-file-content {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    padding: 2.5rem;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 520px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.create-file-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.create-file-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.create-file-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f7fafc;
+    margin: 0;
+}
+
+.create-file-close {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
     border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 16px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.create-file-close:hover {
+    color: #f7fafc;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.create-file-info {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(49, 130, 206, 0.1);
+    border: 1px solid rgba(49, 130, 206, 0.2);
+    border-radius: 8px;
+    color: #90cdf4;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 .create-file-info p {
-    margin: 4px 0;
-    color: #e0e0e0;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+}
+
+.create-file-info p:last-child {
+    margin-bottom: 0;
 }
 
 .create-file-info strong {
-    color: #3b82f6;
+    color: #63b3ed;
+    font-weight: 600;
+}
+
+.create-file-info-icon {
+    margin-right: 0.5rem;
+    font-size: 1rem;
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 2rem;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 6px;
-    color: #e0e0e0;
+    margin-bottom: 0.75rem;
+    color: #e2e8f0;
     font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .form-input {
     width: 100%;
-    padding: 8px 12px;
-    background-color: #1a1a1a;
-    border: 1px solid #444;
-    border-radius: 4px;
-    color: #e0e0e0;
-    font-size: 14px;
-    transition: border-color 0.2s;
+    padding: 1rem;
+    border: 2px solid #4a5568;
+    border-radius: 8px;
+    background: #1a202c;
+    color: #f7fafc;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .form-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    background: #2d3748;
 }
 
 .form-input::placeholder {
-    color: #888;
+    color: #718096;
 }
+
+.create-file-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.create-file-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.create-file-btn-primary {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5aa0 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+.create-file-btn-primary:hover {
+    background: linear-gradient(135deg, #2c5aa0 0%, #2a4d7c 100%);
+    box-shadow: 0 6px 16px rgba(49, 130, 206, 0.4);
+    transform: translateY(-1px);
+}
+
+.create-file-btn-secondary {
+    background: #4a5568;
+    color: #e2e8f0;
+    border: 1px solid #718096;
+}
+
+.create-file-btn-secondary:hover {
+    background: #718096;
+    color: #f7fafc;
+    transform: translateY(-1px);
+}
+
+/* Enhanced File Editor Styles */
+.file-editor-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.file-editor-content {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    border-radius: 12px;
+    width: 95%;
+    height: 90%;
+    max-width: 1200px;
+    max-height: 800px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.file-editor-header {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.file-editor-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f7fafc;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.file-editor-title-icon {
+    font-size: 1.5rem;
+}
+
+.file-editor-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #a0aec0;
+    font-size: 0.9rem;
+}
+
+.file-editor-close {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.file-editor-close:hover {
+    color: #f7fafc;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.file-editor-toolbar {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.file-editor-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-editor-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.file-editor-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-editor-btn-primary {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5aa0 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
+}
+
+.file-editor-btn-primary:hover {
+    background: linear-gradient(135deg, #2c5aa0 0%, #2a4d7c 100%);
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+    transform: translateY(-1px);
+}
+
+.file-editor-btn-secondary {
+    background: #4a5568;
+    color: #e2e8f0;
+    border: 1px solid #718096;
+}
+
+.file-editor-btn-secondary:hover {
+    background: #718096;
+    color: #f7fafc;
+    transform: translateY(-1px);
+}
+
+.file-editor-btn-danger {
+    background: #e53e3e;
+    color: white;
+}
+
+.file-editor-btn-danger:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+}
+
+.file-editor-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #a0aec0;
+    font-size: 0.85rem;
+}
+
+.file-editor-status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.file-editor-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.file-editor-textarea-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.file-editor-textarea {
+    width: 100%;
+    height: 100%;
+    background: #1a202c;
+    border: none;
+    color: #f7fafc;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 1rem;
+    resize: none;
+    outline: none;
+    box-sizing: border-box;
+    tab-size: 4;
+}
+
+.file-editor-textarea::placeholder {
+    color: #718096;
+}
+
+.file-editor-footer {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.file-editor-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.file-editor-shortcuts {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #a0aec0;
+    font-size: 0.8rem;
+}
+
+.file-editor-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.file-editor-shortcut-key {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.75rem;
+}
+
+/* Syntax highlighting classes */
+.syntax-keyword { color: #ff79c6; }
+.syntax-string { color: #f1fa8c; }
+.syntax-comment { color: #6272a4; }
+.syntax-number { color: #bd93f9; }
+.syntax-function { color: #50fa7b; }
+.syntax-variable { color: #8be9fd; }
+.syntax-type { color: #ffb86c; }
 
 /* Context Menu Styles */
 .context-menu {
