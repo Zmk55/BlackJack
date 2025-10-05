@@ -181,32 +181,32 @@ func handleSSHConnect(session *SSHSession, req SSHRequest) {
 		sendError(session.Conn, fmt.Sprintf("Failed to get stdout pipe: %v", err))
 		return
 	}
-	
+
 	stderr, err := sshSession.StderrPipe()
 	if err != nil {
 		sendError(session.Conn, fmt.Sprintf("Failed to get stderr pipe: %v", err))
 		return
 	}
-	
+
 	stdin, err := sshSession.StdinPipe()
 	if err != nil {
 		sendError(session.Conn, fmt.Sprintf("Failed to get stdin pipe: %v", err))
 		return
 	}
-	
+
 	// Store stdin pipe for input handling
 	session.stdin = stdin
-	
+
 	// Start shell
 	err = sshSession.Shell()
 	if err != nil {
 		sendError(session.Conn, fmt.Sprintf("Failed to start shell: %v", err))
 		return
 	}
-	
+
 	// Send connection success message
 	sendMessage(session.Conn, "connected", "SSH connection established")
-	
+
 	// Start reading from SSH session and forwarding to WebSocket
 	go session.forwardSSHToWebSocket(stdout, stderr)
 }
@@ -246,25 +246,34 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 	}
 
 	// 4. Try common SSH key locations
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		homeDir = os.Getenv("USERPROFILE") // Windows fallback
+	}
+
 	commonKeyPaths := []string{
-		os.Getenv("HOME") + "/.ssh/id_rsa",
-		os.Getenv("HOME") + "/.ssh/id_ed25519",
-		os.Getenv("HOME") + "/.ssh/id_ecdsa",
+		homeDir + "/.ssh/id_rsa",
+		homeDir + "/.ssh/id_ed25519",
+		homeDir + "/.ssh/id_ecdsa",
+		homeDir + "/.ssh/id_dsa",
 	}
 
 	for _, keyPath := range commonKeyPaths {
 		if _, err := os.Stat(keyPath); err == nil {
 			key, err := os.ReadFile(keyPath)
 			if err != nil {
+				log.Printf("Failed to read key file %s: %v", keyPath, err)
 				continue
 			}
 
 			signer, err := ssh.ParsePrivateKey(key)
 			if err != nil {
+				log.Printf("Failed to parse key file %s: %v", keyPath, err)
 				continue
 			}
 
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
+			log.Printf("Added SSH key: %s", keyPath)
 		}
 	}
 
@@ -275,6 +284,10 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 	addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
+		// Provide more specific error information
+		if authErr, ok := err.(*ssh.ServerAuthError); ok {
+			return nil, fmt.Errorf("SSH authentication failed: %v. Please ensure your public key is in the server's authorized_keys file", authErr)
+		}
 		return nil, fmt.Errorf("SSH connection failed: %v", err)
 	}
 
@@ -282,50 +295,31 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 }
 
 func (s *SSHSession) forwardSSHToWebSocket(stdout, stderr io.Reader) {
-	// Forward stdout to WebSocket
+	// Use a single goroutine to avoid concurrent writes
 	go func() {
+		// Create a combined reader for stdout and stderr
+		combinedReader := io.MultiReader(stdout, stderr)
 		buffer := make([]byte, 1024)
+
 		for {
 			select {
 			case <-s.Context.Done():
 				return
 			default:
-				n, err := stdout.Read(buffer)
+				n, err := combinedReader.Read(buffer)
 				if err != nil {
 					if err != io.EOF {
-						log.Printf("SSH stdout read error: %v", err)
+						log.Printf("SSH read error: %v", err)
 					}
 					// Send session closed message
-					sendMessage(s.Conn, "session_closed", "SSH session terminated")
+					s.sendMessageSafe("session_closed", "SSH session terminated")
 					return
 				}
-				sendMessage(s.Conn, "output", string(buffer[:n]))
+				s.sendMessageSafe("output", string(buffer[:n]))
 			}
 		}
 	}()
-	
-	// Forward stderr to WebSocket
-	go func() {
-		buffer := make([]byte, 1024)
-		for {
-			select {
-			case <-s.Context.Done():
-				return
-			default:
-				n, err := stderr.Read(buffer)
-				if err != nil {
-					if err != io.EOF {
-						log.Printf("SSH stderr read error: %v", err)
-					}
-					// Send session closed message
-					sendMessage(s.Conn, "session_closed", "SSH session terminated")
-					return
-				}
-				sendMessage(s.Conn, "output", string(buffer[:n]))
-			}
-		}
-	}()
-	
+
 	// Monitor session status
 	go func() {
 		// Wait for session to end
@@ -335,9 +329,9 @@ func (s *SSHSession) forwardSSHToWebSocket(stdout, stderr io.Reader) {
 		} else {
 			log.Printf("SSH session ended normally")
 		}
-		
+
 		// Send session closed message
-		sendMessage(s.Conn, "session_closed", "SSH session terminated")
+		s.sendMessageSafe("session_closed", "SSH session terminated")
 	}()
 }
 
@@ -346,7 +340,7 @@ func handleTerminalInput(session *SSHSession, input string) {
 		log.Printf("No stdin pipe available")
 		return
 	}
-	
+
 	_, err := session.stdin.Write([]byte(input))
 	if err != nil {
 		log.Printf("Failed to write to SSH session: %v", err)
@@ -375,6 +369,20 @@ func (s *SSHSession) cleanup() {
 	}
 	if s.Cancel != nil {
 		s.Cancel()
+	}
+}
+
+func (s *SSHSession) sendMessageSafe(msgType, data string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	msg := WSMessage{
+		Type: msgType,
+		Data: data,
+	}
+
+	if err := s.Conn.WriteJSON(msg); err != nil {
+		log.Printf("Failed to send WebSocket message: %v", err)
 	}
 }
 
