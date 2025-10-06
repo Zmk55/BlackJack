@@ -39,7 +39,7 @@ else
 fi
 
 # Check cache-busting version
-CACHE_V=$(grep -o 'v=[0-9]*' web-app/index.html | head -1 | cut -d'=' -f2)
+CACHE_V=$(grep -o 'v=[0-9]*' web-app/index.html | head -1 | cut -d'=' -f2 || echo "N/A")
 echo -e "${GREEN}🔄 Cache-busting version: $CACHE_V${NC}"
 
 echo
