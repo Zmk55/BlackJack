@@ -1,0 +1,41 @@
+# Sensitive files - never commit these
+web-server/credentials.enc
+web-server/master.key
+web-server/data_*.enc
+web-server/config.json
+
+# Build artifacts
+web-server/blackjack-server
+web-server/*.exe
+
+# Go modules
+web-server/go.sum
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Backup files
+*.bak
+*.backup
