@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Post-installation script for BlackJack SSH Client
+
+set -e
+
+# Enable and start the service
+systemctl daemon-reload
+systemctl enable blackjack.service
+
+# Update desktop database
+if command -v update-desktop-database &> /dev/null; then
+    update-desktop-database /usr/share/applications
+fi
+
+# Update icon cache
+if command -v gtk-update-icon-cache &> /dev/null; then
+    gtk-update-icon-cache -f /usr/share/pixmaps
+fi
+
+echo "BlackJack SSH Client installed successfully!"
+echo "To start the service: sudo systemctl start blackjack"
+echo "Access the web interface at: http://localhost:8082"

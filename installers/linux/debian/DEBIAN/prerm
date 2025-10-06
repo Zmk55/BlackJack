@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Pre-removal script for BlackJack SSH Client
+
+set -e
+
+# Stop and disable the service
+systemctl stop blackjack.service || true
+systemctl disable blackjack.service || true

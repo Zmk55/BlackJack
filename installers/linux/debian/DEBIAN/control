@@ -1,0 +1,20 @@
+Package: blackjack-ssh-client
+Version: 1.0.0
+Section: net
+Priority: optional
+Architecture: amd64
+Depends: systemd, curl, wget, unzip
+Maintainer: BlackJack Team <support@blackjack-ssh.com>
+Description: Modern SSH Management Made Simple
+ BlackJack is a modern, cross-platform SSH client that provides:
+ .
+  * Web-based SSH terminal with xterm.js
+  * SFTP file browser with drag-and-drop
+  * Host management with groups and tags
+  * Encrypted credential storage
+  * Cross-platform compatibility
+  * Modern, responsive web interface
+ .
+ This package provides the complete BlackJack SSH Client
+ with systemd service integration and desktop shortcuts.
+Homepage: https://github.com/Zmk55/BlackJack
