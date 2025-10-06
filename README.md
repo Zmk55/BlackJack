@@ -1,269 +1,463 @@
-# BlackJack
+# BlackJack SSH Client
 
-A modern web-based SSH management application with tabbed interface, host management, and advanced organization features.
+**Modern SSH Management Made Simple** 🚀
 
-## Features
+A comprehensive, cross-platform SSH client with web-based terminal, SFTP file browser, encrypted credential storage, and advanced host management.
 
-- **Modern Web GUI**: Beautiful dark-themed interface with responsive design
-- **Tabbed Interface**: Multiple SSH sessions in separate tabs with drag-and-drop support
-- **Host Management**: Add, edit, clone, and organize SSH hosts with hierarchical groups
-- **Advanced Organization**: Hierarchical groups with host counts and collapsible sidebar
+## ✨ Key Features
+
+### 🌐 **Web-Based SSH Terminal**
+- **Real SSH Connections**: Full xterm.js terminal emulation with actual SSH protocol
+- **Multiple Sessions**: Tabbed interface with concurrent SSH connections
+- **WebSocket Communication**: Real-time bidirectional communication
+- **Session Management**: Persistent sessions with automatic reconnection
+
+### 📁 **SFTP File Browser**
+- **Dual-Pane Interface**: Local and remote file systems side-by-side
+- **Drag & Drop**: Intuitive file transfers between local and remote machines
+- **File Operations**: Create, edit, delete, upload, and download files
+- **Directory Navigation**: Clickable path breadcrumbs and parent directory links
+- **Hidden Files**: Toggle visibility of hidden files and directories
+- **File Editor**: Built-in code editor with syntax highlighting
+
+### 🔐 **Security & Authentication**
+- **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
+- **SSH Key Management**: Automatic SSH key detection and authentication
+- **Password Fallback**: Automatic fallback to password authentication
+- **Session Security**: Secure session management with encrypted cookies
+- **Access Control**: User authentication and authorization system
+
+### 🏷️ **Advanced Host Management**
+- **Hierarchical Groups**: Organize hosts with nested group structures
 - **Smart Tagging**: Color-coded tags with automatic Tailscale detection
 - **Search & Filter**: Real-time search across hostnames, groups, and tags
-- **Tailscale Integration**: Automatic tagging and connection options for Tailscale hosts
-- **Settings Management**: Comprehensive settings with integrations and data management
-- **Cross-platform**: Works on any platform with a modern web browser
+- **Host Services**: Configure and manage multiple services per host
+- **Import/Export**: Backup and restore host configurations
 
-## Quick Start
+### 🌍 **Cross-Platform Support**
+- **Windows**: Native installer with system integration
+- **Linux**: .deb/.rpm packages with systemd service
+- **macOS**: Universal compatibility
+- **Web Access**: Works on any device with a modern browser
 
-### 🚀 Unified Startup (Recommended)
+## 🚀 Quick Start
 
-The easiest way to start BlackJack is using the unified startup script:
+### 📦 **Easy Installation**
 
+#### **Windows Users**
+```bash
+# Download and run the installer
+BlackJack-Setup-1.0.0.exe
+# Follow the GUI wizard - that's it!
+# Access at: http://localhost:8082
+```
+
+#### **Linux Users**
+```bash
+# Ubuntu/Debian
+sudo dpkg -i blackjack-ssh-client-1.0.0.deb
+sudo systemctl start blackjack
+
+# CentOS/RHEL/Fedora
+sudo rpm -i blackjack-ssh-client-1.0.0.rpm
+sudo systemctl start blackjack
+
+# Or use the install script
+sudo ./install.sh
+```
+
+#### **Command Line Usage**
+```bash
+blackjack start    # Start the service
+blackjack stop     # Stop the service
+blackjack status   # Check status
+blackjack logs     # View logs
+```
+
+### 🔧 **Development Setup**
+
+#### **From Source**
 ```bash
 # Clone the repository
 git clone https://github.com/Zmk55/BlackJack.git
 cd BlackJack
 
-# Start with unified script (interactive)
+# Install Go (if not already installed)
+# Download from: https://golang.org/dl/
+
+# Build and run
+cd web-server
+go build -o blackjack-server main.go
+./blackjack-server
+
+# Access at: http://localhost:8082
+```
+
+#### **Unified Startup Script**
+```bash
+# Interactive mode
 ./start.sh
 
-# Or start specific modes:
+# Specific modes
 ./start.sh -m web          # Web application (default)
 ./start.sh -m desktop      # Desktop application
 ./start.sh -m tui          # Terminal UI
 ./start.sh -p 8080         # Custom port
 ```
 
-### 🌐 Web Application
+## 🎮 Usage
 
-```bash
-# Option 1: Using unified script (recommended)
-./start.sh -m web
+### 🌐 **Web Interface**
 
-# Option 2: Using Makefile
-make start-web
+1. **Access**: Open http://localhost:8082 in your browser
+2. **First Setup**: Create your admin account on first visit
+3. **Add Hosts**: Click "Add Host" to configure SSH connections
+4. **Connect**: Click "Connect" to open SSH terminal or SFTP browser
+5. **Organize**: Use groups and tags to organize your hosts
+6. **Settings**: Configure security, updates, and data management
 
-# Option 3: Manual start
-cd web-server
-./run.sh
-```
+### 🔑 **SSH Terminal Features**
 
-### 🖥️ Desktop Application
+- **Real SSH Connections**: Full terminal emulation with actual SSH protocol
+- **Multiple Sessions**: Open multiple SSH connections in separate tabs
+- **Session Persistence**: Sessions survive browser refreshes
+- **Keyboard Shortcuts**: Standard terminal shortcuts (Ctrl+C, Ctrl+D, etc.)
+- **Copy/Paste**: Full clipboard support for text operations
 
-```bash
-# Option 1: Using unified script
-./start.sh -m desktop
+### 📁 **SFTP File Browser**
 
-# Option 2: Using Makefile
-make start-desktop
+- **Dual-Pane View**: Local and remote file systems side-by-side
+- **Drag & Drop**: Drag files between local and remote machines
+- **File Operations**: 
+  - Create new files and directories
+  - Edit files with built-in code editor
+  - Delete files and directories
+  - Upload/download multiple files
+- **Navigation**: Clickable path breadcrumbs and parent directory links
+- **Hidden Files**: Toggle visibility with checkbox controls
+- **Sorting**: Click column headers to sort by name, size, or date
 
-# Option 3: Manual start
-cd desktop
-./run.sh
-```
+### 🏷️ **Host Management**
 
-### 💻 Terminal UI
+#### **Adding Hosts**
+- **Basic Info**: Name, IP address, username, port
+- **Authentication**: SSH keys (automatic detection) or passwords
+- **Organization**: Assign to groups and add tags
+- **Services**: Configure multiple services (HTTP, HTTPS, custom ports)
 
-```bash
-# Option 1: Using unified script
-./start.sh -m tui
-
-# Option 2: Using Makefile
-make start-tui
-
-# Option 3: Manual start
-make run
-```
-
-## Usage
-
-### Web Interface
-
-1. **Add Hosts**: Click "Add Host" to create new SSH connections
-2. **Organize with Groups**: Create hierarchical groups for better organization
-3. **Tag Management**: Add color-coded tags for easy identification
-4. **Search**: Use the search bar to quickly find hosts
-5. **Connect**: Click "Connect" to open SSH sessions in new tabs
-6. **Settings**: Configure integrations and manage data
-
-### Key Features
-
-#### Host Management
-- **Add/Edit/Delete**: Full CRUD operations for hosts
-- **Clone Hosts**: Duplicate hosts with "-copy" suffix
-- **Group Assignment**: Organize hosts into hierarchical groups
-- **Tag System**: Color-coded tags with automatic Tailscale detection
-
-#### Advanced Organization
+#### **Advanced Organization**
 - **Hierarchical Groups**: Create nested group structures
-- **Host Counts**: See host counts in parentheses next to group names
-- **Collapsible Sidebar**: Hide/show the organization panel
-- **Search & Filter**: Real-time filtering by hostname, group, or tag
+- **Smart Tags**: Color-coded tags with automatic Tailscale detection
+- **Search & Filter**: Real-time search across all host properties
+- **Bulk Operations**: Select multiple hosts for batch operations
 
-#### Tailscale Integration
-- **Automatic Detection**: Tailscale IPs automatically get 🔗 Tailscale tags
-- **Connection Options**: Choose between local and Tailscale connections
-- **Visual Indicators**: Clear identification of Tailscale-enabled hosts
+#### **Security Features**
+- **Encrypted Storage**: All credentials encrypted with AES-256-GCM
+- **SSH Key Management**: Automatic detection of SSH keys
+- **Password Fallback**: Automatic fallback when SSH keys fail
+- **Session Security**: Secure session management with encrypted cookies
 
-#### Settings & Data Management
-- **Integrations**: Enable/disable Tailscale integration
-- **Data Management**: Clear tag history and manage application data
-- **Modern UI**: Card-based settings with toggle switches
+## ⚙️ Configuration
 
-## Configuration
+### 🔐 **Security & Authentication**
 
-### Data Storage
+#### **Encrypted Data Storage**
+- **AES-256-GCM Encryption**: All sensitive data encrypted at rest
+- **PBKDF2 Key Derivation**: Secure key generation from master password
+- **Secure Sessions**: Encrypted session cookies with configurable duration
+- **Access Control**: User authentication and authorization system
 
-BlackJack stores data in browser localStorage:
-- **Hosts**: SSH connection details and metadata
-- **Groups**: Hierarchical organization structure
-- **Tags**: Color-coded categorization system
-- **Settings**: Application preferences and integrations
+#### **SSH Authentication**
+- **Automatic SSH Key Detection**: Supports id_rsa, id_ed25519, id_ecdsa, id_dsa
+- **SSH Agent Integration**: Uses SSH agent when available
+- **Password Fallback**: Automatic fallback to password authentication
+- **Cross-Platform**: Works on Windows, Linux, and macOS
 
-### Host Configuration
+### 📊 **Data Management**
 
-```javascript
-// Example host structure
-{
-  "id": "web-server-01",
-  "name": "Web Server 01",
-  "address": "192.168.1.100",
-  "user": "ubuntu",
-  "port": 22,
-  "groupId": "production",
-  "tags": [
-    {"name": "Web", "color": "blue"},
-    {"name": "Production", "color": "red"}
-  ],
-  "tailscaleIp": "100.64.1.5" // Optional Tailscale IP
-}
+#### **Backup & Restore**
+- **Full Database Export**: Encrypted backup of all data
+- **Individual Host Export**: Export specific hosts to JSON
+- **Import System**: Smart import with duplicate detection
+- **Data Validation**: Comprehensive validation and error handling
+
+#### **Configuration Files**
+- **Linux**: `/opt/blackjack/web-server/config.json`
+- **Windows**: `C:\Program Files\BlackJack SSH Client\web-server\config.json`
+
+### 🌐 **Network Configuration**
+
+#### **Port Configuration**
+```bash
+# Default port: 8082
+# Custom port via environment variable
+export BLACKJACK_PORT=8080
+
+# Or via command line
+./blackjack-server -port 8080
 ```
 
-## Development
+#### **Firewall Rules**
+- **Windows**: Automatically configured during installation
+- **Linux**: Manual configuration may be required
+```bash
+# Ubuntu/Debian
+sudo ufw allow 8082
 
-### Project Structure
+# CentOS/RHEL/Fedora
+sudo firewall-cmd --permanent --add-port=8082/tcp
+sudo firewall-cmd --reload
+```
+
+### 🔄 **Update System**
+
+#### **Automatic Updates**
+- **Version Checking**: Automatic detection of new versions
+- **Update Notifications**: In-app notifications for available updates
+- **One-Click Updates**: Simple update process with automatic restart
+- **Rollback Support**: Ability to revert to previous versions
+
+#### **Manual Updates**
+```bash
+# Check for updates
+blackjack update-check
+
+# Download and install update
+blackjack update
+
+# View version information
+blackjack version
+```
+
+## 🛠️ Development
+
+### 📁 **Project Structure**
 
 ```
 BlackJack/
-├── web-app/                 # Web application (HTML, CSS, JS)
-│   ├── index.html          # Main interface
-│   ├── styles.css          # Modern styling
-│   └── app.js              # Application logic
-├── desktop/                # Tauri desktop application
-│   ├── src-tauri/         # Rust backend
-│   └── web/               # Web frontend
-├── internal/              # Go backend (legacy)
-├── pkg/                   # Go packages
-├── examples/              # Sample configurations
-└── build/                # Build artifacts
+├── web-app/                    # Web frontend
+│   ├── index.html             # Main interface
+│   ├── styles.css             # Modern styling
+│   ├── app.js                 # Application logic
+│   ├── version.js             # Version information
+│   └── update.js              # Update system
+├── web-server/                 # Go backend
+│   ├── main.go                # Main server
+│   ├── config.json            # Configuration
+│   └── run.sh                 # Startup script
+├── installers/                 # Installation packages
+│   ├── windows/               # Windows installer (NSIS)
+│   ├── linux/                 # Linux installers
+│   └── build-installers.sh    # Build script
+├── desktop/                    # Tauri desktop app
+│   ├── src-tauri/            # Rust backend
+│   └── web/                  # Web frontend
+├── build/                     # Build artifacts
+├── VERSION                    # Version file
+└── INSTALLATION.md           # Installation guide
 ```
 
-### Development Setup
+### 🔧 **Development Setup**
 
+#### **Prerequisites**
+- **Go**: 1.22+ (for backend development)
+- **Node.js**: 16+ (for frontend development)
+- **Git**: For version control
+
+#### **Local Development**
 ```bash
-# Web development
+# Clone repository
+git clone https://github.com/Zmk55/BlackJack.git
+cd BlackJack
+
+# Backend development
+cd web-server
+go mod tidy
+go run main.go
+
+# Frontend development (in another terminal)
 cd web-app
-python3 -m http.server 8082
+python3 -m http.server 8083
 
-# Desktop development
-cd desktop
-./run.sh
-
-# Go backend (if needed)
-go run cmd/blackjack/main.go
+# Access at: http://localhost:8082
 ```
 
-### Key Technologies
+#### **Building from Source**
+```bash
+# Build backend
+cd web-server
+go build -o blackjack-server main.go
 
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+# Build installers
+./installers/build-installers.sh
+
+# Build desktop app
+cd desktop
+npm install
+npm run tauri build
+```
+
+### 🏗️ **Architecture**
+
+#### **Backend (Go)**
+- **HTTP Server**: RESTful API and static file serving
+- **WebSocket Handler**: Real-time SSH and SFTP communication
+- **SSH Client**: Go SSH library for terminal connections
+- **SFTP Client**: File transfer protocol implementation
+- **Encryption**: AES-256-GCM for data security
+- **Authentication**: Session-based user authentication
+
+#### **Frontend (JavaScript)**
+- **WebSocket Client**: Real-time communication with backend
+- **Terminal Emulation**: xterm.js for SSH terminal
+- **File Browser**: Custom SFTP file management interface
+- **Host Management**: CRUD operations for SSH hosts
+- **State Management**: LocalStorage for client-side persistence
+
+#### **Key Technologies**
+- **Backend**: Go, WebSocket, SSH, SFTP, AES encryption
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+), xterm.js
 - **Desktop**: Tauri (Rust + Web)
-- **Backend**: Go (optional)
-- **Styling**: Modern CSS with dark theme
-- **Storage**: Browser localStorage
+- **Installation**: NSIS (Windows), dpkg/rpm (Linux)
+- **Security**: AES-256-GCM, PBKDF2, secure sessions
 
-## Features Overview
+## 📋 System Requirements
 
-### 🎯 Host Management
-- Add, edit, delete, and clone hosts
-- Hierarchical group organization
-- Color-coded tagging system
-- Search and filtering capabilities
+### **Minimum Requirements**
+- **OS**: Windows 10, Ubuntu 18.04+, CentOS 7+, macOS 10.14+
+- **RAM**: 512 MB
+- **Storage**: 100 MB
+- **Network**: Internet connection for updates
 
-### 🔗 Tailscale Integration
-- Automatic Tailscale IP detection
-- Visual indicators with 🔗 icon
-- Connection options for local vs Tailscale
-- Protected auto-tags that can't be manually removed
+### **Recommended Requirements**
+- **OS**: Windows 11, Ubuntu 20.04+, CentOS 8+, macOS 11+
+- **RAM**: 2 GB
+- **Storage**: 500 MB
+- **Network**: Stable internet connection
 
-### 🎨 Modern UI
-- Dark theme with professional appearance
-- Responsive design for all screen sizes
-- Smooth animations and transitions
-- Intuitive navigation and controls
+### **Dependencies**
+- **Go**: 1.22+ (for building from source)
+- **Systemd**: For Linux service management
+- **Modern Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
 
-### ⚙️ Advanced Settings
-- Integration management
-- Data export/import capabilities
-- Tag history management
-- Application preferences
-
-## Browser Compatibility
+## 🌐 Browser Compatibility
 
 - **Chrome**: 90+ (Recommended)
 - **Firefox**: 88+
 - **Safari**: 14+
 - **Edge**: 90+
 
-## Contributing
+## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+We welcome contributions! Here's how to get started:
 
-## License
+### **Getting Started**
+1. **Fork** the repository
+2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/BlackJack.git`
+3. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+4. **Make** your changes
+5. **Test** thoroughly
+6. **Commit** your changes: `git commit -m 'Add amazing feature'`
+7. **Push** to your branch: `git push origin feature/amazing-feature`
+8. **Open** a Pull Request
+
+### **Development Guidelines**
+- Follow existing code style and patterns
+- Add tests for new features
+- Update documentation as needed
+- Ensure cross-platform compatibility
+- Test on multiple browsers
+
+### **Areas for Contribution**
+- 🐛 **Bug Fixes**: Report and fix issues
+- ✨ **New Features**: Add functionality
+- 📚 **Documentation**: Improve guides and docs
+- 🎨 **UI/UX**: Enhance user interface
+- 🔒 **Security**: Improve security features
+- 🌍 **Localization**: Add language support
+
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Roadmap
+## 🗺️ Roadmap
 
-### Current Version
-- ✅ Modern web-based GUI
-- ✅ Tabbed interface with drag-and-drop
-- ✅ Hierarchical group management
-- ✅ Advanced tagging system
-- ✅ Tailscale integration
-- ✅ Search and filtering
-- ✅ Settings and data management
+### **v1.0.0 (Current) ✅**
+- ✅ Real SSH terminal with xterm.js
+- ✅ SFTP file browser with drag-and-drop
+- ✅ Encrypted credential storage
+- ✅ Cross-platform installers
+- ✅ Host management with groups and tags
+- ✅ Automatic update system
+- ✅ Modern web interface
+- ✅ Session persistence
 
-### Future Enhancements
-- [ ] SSH key management
+### **v1.1.0 (Planned) 🚧**
+- [ ] SSH key management interface
 - [ ] Session recording and playback
 - [ ] Team collaboration features
 - [ ] Cloud synchronization
 - [ ] Mobile responsive improvements
-- [ ] Plugin system
+- [ ] Plugin system architecture
 
-## Support
+### **v1.2.0 (Future) 🔮**
+- [ ] Multi-user support
+- [ ] Role-based access control
+- [ ] API for third-party integrations
+- [ ] Advanced terminal features
+- [ ] Container deployment support
+- [ ] Enterprise features
 
+## 🆘 Support
+
+### **Getting Help**
 - **GitHub Issues**: [Report bugs and request features](https://github.com/Zmk55/BlackJack/issues)
-- **Documentation**: This README and inline code comments
+- **Documentation**: [Installation Guide](INSTALLATION.md) and inline code comments
 - **Discussions**: [GitHub Discussions](https://github.com/Zmk55/BlackJack/discussions)
 
-## Changelog
+### **Reporting Issues**
+When reporting issues, please include:
+- Operating system and version
+- Browser and version
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots or error messages
 
-### v1.0.0 (Current)
-- Modern web-based GUI replacing TUI
-- Tabbed interface with drag-and-drop support
-- Hierarchical group management with host counts
-- Advanced tagging system with automatic Tailscale detection
-- Search and filtering capabilities
-- Settings management with integrations
-- Responsive design with dark theme
-- Cross-platform compatibility
+### **Feature Requests**
+For feature requests, please:
+- Check existing issues first
+- Describe the use case
+- Explain the expected behavior
+- Consider contributing code
+
+## 📈 Changelog
+
+### **v1.0.0 (Current)**
+- 🌐 **Real SSH Terminal**: Full xterm.js terminal emulation with actual SSH protocol
+- 📁 **SFTP File Browser**: Dual-pane file browser with drag-and-drop transfers
+- 🔐 **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
+- 🚀 **Cross-Platform Installers**: Windows (.exe) and Linux (.deb/.rpm) packages
+- 🏷️ **Advanced Host Management**: Hierarchical groups, smart tags, and search
+- 🔄 **Update System**: Automatic version checking and one-click updates
+- 🎨 **Modern UI**: Responsive design with dark theme and smooth animations
+- 🌍 **Cross-Platform**: Windows, Linux, and macOS support
+- 🔒 **Security**: SSH key management, password fallback, and secure sessions
+- 📊 **Data Management**: Backup, restore, and import/export functionality
 
 ---
 
+## 🎯 **Why BlackJack?**
+
+BlackJack combines the power of traditional SSH clients with modern web technologies to provide:
+
+- **🚀 Easy Installation**: One-click installers for all platforms
+- **🔒 Enterprise Security**: Military-grade encryption and secure authentication
+- **🌐 Web-Based Access**: Use from any device with a modern browser
+- **📁 File Management**: Integrated SFTP browser with drag-and-drop
+- **🏷️ Smart Organization**: Advanced host management with groups and tags
+- **🔄 Always Updated**: Automatic update system keeps you current
+- **🌍 Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
+
 **BlackJack** - Modern SSH Management Made Simple 🚀
+
+*Ready to revolutionize your SSH workflow? [Download now](https://github.com/Zmk55/BlackJack/releases) and experience the future of SSH management!*
