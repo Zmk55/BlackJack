@@ -128,10 +128,28 @@ async function passiveCheckOnLoad() {
 
 // Wire up on DOM ready
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("check-updates-btn")
-        ?.addEventListener("click", () => manualCheckForUpdates());
+    const checkUpdatesBtn = document.getElementById("check-updates-btn");
+    if (checkUpdatesBtn) {
+        checkUpdatesBtn.addEventListener("click", () => {
+            console.log("Check for Updates button clicked");
+            manualCheckForUpdates();
+        });
+        console.log("Check for Updates button event listener attached");
+    } else {
+        console.log("Check for Updates button not found");
+    }
     passiveCheckOnLoad();
 });
+
+// Also try to attach the event listener immediately (in case DOM is already ready)
+const checkUpdatesBtn = document.getElementById("check-updates-btn");
+if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener("click", () => {
+        console.log("Check for Updates button clicked (immediate)");
+        manualCheckForUpdates();
+    });
+    console.log("Check for Updates button event listener attached (immediate)");
+}
 
 // Export for manual use
 window.manualCheckForUpdates = manualCheckForUpdates;
