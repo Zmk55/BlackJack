@@ -68,25 +68,61 @@ async function maybeUpdateServiceWorker() {
  */
 async function manualCheckForUpdates() {
     const current = window.BLACKJACK_VERSION || "0.0.0";
+    const statusElement = document.getElementById('update-status');
+    const button = document.getElementById('check-updates-btn');
+    
+    // Show loading state
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="btn-icon">⏳</span>Checking...';
+    }
+    
+    if (statusElement) {
+        statusElement.innerHTML = '<div class="update-status loading">⏳ Checking for updates...</div>';
+    }
+    
     try {
         const latest = await fetchLatestVersion();
         const newer = cmpSemver(latest, current) > 0;
 
         if (!newer) {
-            alert(`You're up to date (v${current}).`);
-            return;
+            if (statusElement) {
+                statusElement.innerHTML = `<div class="update-status up-to-date">✅ You're up to date (v${current})</div>`;
+            }
+        } else {
+            if (statusElement) {
+                statusElement.innerHTML = `
+                    <div class="update-status update-available">
+                        <div class="update-info">🔄 BlackJack v${latest} is available (you have v${current})</div>
+                        <button class="btn btn-primary btn-sm" onclick="updateToLatest('${latest}')">Update Now</button>
+                    </div>
+                `;
+            }
         }
-
-        const ok = confirm(`BlackJack v${latest} is available (you have v${current}). Reload now?`);
-        if (!ok) return;
-
-        // Try SW fast-path; then reload
-        try { await maybeUpdateServiceWorker(); } catch {}
-        cacheBustedReload(latest);
     } catch (e) {
         console.error("Update check failed:", e);
-        alert("Could not check for updates. Try again later.");
+        if (statusElement) {
+            statusElement.innerHTML = '<div class="update-status error">❌ Could not check for updates. Try again later.</div>';
+        }
+    } finally {
+        // Reset button state
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<span class="btn-icon">🔄</span>Check for Updates';
+        }
     }
+}
+
+/**
+ * Update to latest version
+ */
+async function updateToLatest(latest) {
+    const ok = confirm(`Reload BlackJack to update to v${latest}?`);
+    if (!ok) return;
+
+    // Try SW fast-path; then reload
+    try { await maybeUpdateServiceWorker(); } catch {}
+    cacheBustedReload(latest);
 }
 
 /**
@@ -153,3 +189,4 @@ if (checkUpdatesBtn) {
 
 // Export for manual use
 window.manualCheckForUpdates = manualCheckForUpdates;
+window.updateToLatest = updateToLatest;
