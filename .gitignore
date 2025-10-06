@@ -3,6 +3,11 @@ web-server/credentials.enc
 web-server/master.key
 web-server/data_*.enc
 web-server/config.json
+web-server/*.enc
+web-server/*.key
+web-server/*.db
+web-server/*.sqlite
+web-server/*.sqlite3
 
 # Build artifacts
 web-server/blackjack-server
