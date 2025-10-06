@@ -1741,11 +1741,11 @@ class BlackJackApp {
         this.closeModal('connection-modal');
     }
 
-    connectSFTP() {
+    async connectSFTP() {
         if (!this.currentHost) return;
         
         // Create new SFTP tab
-        this.createSFTPTab(this.currentHost);
+        await this.createSFTPTab(this.currentHost);
         this.closeModal('connection-modal');
     }
 
@@ -1800,7 +1800,7 @@ class BlackJackApp {
         this.initializeSSHTerminal(tabId, host);
     }
 
-    createSFTPTab(host) {
+    async createSFTPTab(host) {
         const tabId = `sftp-${host.id}-${Date.now()}`;
         const tabTitle = `SFTP: ${host.name}`;
         
@@ -1848,7 +1848,7 @@ class BlackJackApp {
                                         Show Hidden
                                     </label>
                                 </div>
-                                <div class="sftp-path" id="sftp-local-path-${tabId}">/home/tim</div>
+                                <div class="sftp-path" id="sftp-local-path-${tabId}">Loading...</div>
                             </div>
                         <div class="sftp-files" id="sftp-local-files-${tabId}">
                             <div class="sftp-loading">Loading local files...</div>
@@ -1887,22 +1887,46 @@ class BlackJackApp {
         });
         
         // Initialize both local and remote file browsers
-        this.initializeLocalFileBrowser(tabId);
+        await this.initializeLocalFileBrowser(tabId);
         this.initializeSFTPConnection(tabId, host);
     }
 
-    initializeLocalFileBrowser(tabId) {
+    async initializeLocalFileBrowser(tabId) {
         console.log('Initializing local file browser for tab:', tabId);
         
-        // Use actual user's home directory
-        this.currentLocalPaths[tabId] = '/home/tim';
+        // Use actual user's home directory (cross-platform)
+        this.currentLocalPaths[tabId] = await this.getUserHomeDirectory();
         
         // Load local files
         this.loadLocalFiles(tabId);
     }
 
+    async getUserHomeDirectory() {
+        // Try to get home directory from the backend first
+        try {
+            const response = await fetch('/api/user-home', {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.homeDir;
+            }
+        } catch (error) {
+            console.log('Failed to get home directory from backend, using fallback:', error);
+        }
+        
+        // Fallback to reasonable defaults
+        if (navigator.platform.toLowerCase().includes('win')) {
+            return 'C:\\Users\\' + (process.env.USERNAME || 'User');
+        } else {
+            return '/home/' + (process.env.USER || 'user');
+        }
+    }
+
     loadLocalFiles(tabId) {
-        const currentPath = this.currentLocalPaths[tabId] || '/home/tim';
+        const currentPath = this.currentLocalPaths[tabId] || this.getUserHomeDirectory();
         const pathDisplay = document.getElementById(`sftp-local-path-${tabId}`);
         
         if (pathDisplay) {
@@ -1955,7 +1979,7 @@ class BlackJackApp {
 
     displayLocalFiles(tabId, files) {
         const filesContainer = document.getElementById(`sftp-local-files-${tabId}`);
-        const currentPath = this.currentLocalPaths[tabId] || '/home/tim';
+        const currentPath = this.currentLocalPaths[tabId] || this.getUserHomeDirectory();
         
         // Update clickable path
         this.updateClickablePath(tabId, 'local', currentPath);
@@ -1982,8 +2006,9 @@ class BlackJackApp {
         `;
         
         // Add parent directory link if not at root
-        if (currentPath !== '/home/tim' && currentPath !== '/') {
-            const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/home/tim';
+        const homeDir = this.getUserHomeDirectory();
+        if (currentPath !== homeDir && currentPath !== '/') {
+            const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || homeDir;
             html += `
                 <div class="sftp-file-item sftp-directory" data-path="${parentPath}" data-is-dir="true" data-pane="local">
                     <div class="sftp-checkbox-placeholder"></div>
@@ -1999,7 +2024,7 @@ class BlackJackApp {
         files.forEach(file => {
             // For directories, the path should be the directory name for navigation
             // For files, the path should be the full path
-            const filePath = file.isDir ? file.name : (currentPath === '/home/tim' ? `/home/tim/${file.name}` : `${currentPath}/${file.name}`);
+            const filePath = file.isDir ? file.name : (currentPath === homeDir ? `${homeDir}/${file.name}` : `${currentPath}/${file.name}`);
             const isDirectory = file.isDir;
             const icon = isDirectory ? '📁' : '📄';
             const size = isDirectory ? '' : this.formatFileSize(file.size);
@@ -2545,16 +2570,16 @@ class BlackJackApp {
     }
 
     sftpListLocalDirectory(tabId, path) {
-        const currentPath = this.currentLocalPaths[tabId] || '/home/tim';
+        const currentPath = this.currentLocalPaths[tabId] || this.getUserHomeDirectory();
         console.log('Current path:', currentPath, 'Navigating to:', path);
         
         // Handle directory navigation
         if (path === '..') {
             // Go up one directory
             const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-            // Allow going up to root directory, but default to /home/tim if we go too far
+            // Allow going up to root directory, but default to home directory if we go too far
             if (parentPath === '' || parentPath === '/home') {
-                this.currentLocalPaths[tabId] = '/home/tim';
+                this.currentLocalPaths[tabId] = this.getUserHomeDirectory();
             } else {
                 this.currentLocalPaths[tabId] = parentPath || '/';
             }
@@ -2780,7 +2805,7 @@ class BlackJackApp {
 
     showCreateFileModal(tabId, pane, targetDirectory = null) {
         // Use target directory if provided, otherwise use current path
-        const currentPath = targetDirectory || (pane === 'local' ? (this.currentLocalPaths[tabId] || '/home/tim') : (this.currentSFTPPaths[tabId] || '/'));
+        const currentPath = targetDirectory || (pane === 'local' ? (this.currentLocalPaths[tabId] || this.getUserHomeDirectory()) : (this.currentSFTPPaths[tabId] || '/'));
         
         const modal = document.createElement('div');
         modal.className = 'create-file-modal';
@@ -2872,8 +2897,9 @@ class BlackJackApp {
     }
 
     createLocalFile(tabId, fileName) {
-        const currentPath = this.currentLocalPaths[tabId] || '/home/tim';
-        const fullPath = currentPath === '/home/tim' ? `/home/tim/${fileName}` : `${currentPath}/${fileName}`;
+        const currentPath = this.currentLocalPaths[tabId] || this.getUserHomeDirectory();
+        const homeDir = this.getUserHomeDirectory();
+        const fullPath = currentPath === homeDir ? `${homeDir}/${fileName}` : `${currentPath}/${fileName}`;
         
         // Create empty file via backend
         this.createLocalFileViaAPI(fullPath, tabId);
@@ -2888,7 +2914,8 @@ class BlackJackApp {
     }
 
     createLocalFileInDirectory(tabId, fileName, targetDirectory) {
-        const fullPath = targetDirectory === '/home/tim' ? `/home/tim/${fileName}` : `${targetDirectory}/${fileName}`;
+        const homeDir = this.getUserHomeDirectory();
+        const fullPath = targetDirectory === homeDir ? `${homeDir}/${fileName}` : `${targetDirectory}/${fileName}`;
         
         // Create empty file via backend
         this.createLocalFileViaAPI(fullPath, tabId);
@@ -3975,7 +4002,7 @@ class BlackJackApp {
 
     createNewFileInCurrentDirectory(tabId, pane) {
         // Get current directory path
-        const currentPath = pane === 'local' ? (this.currentLocalPaths[tabId] || '/home/tim') : (this.currentSFTPPaths[tabId] || '/');
+        const currentPath = pane === 'local' ? (this.currentLocalPaths[tabId] || this.getUserHomeDirectory()) : (this.currentSFTPPaths[tabId] || '/');
         
         // Show the create file modal with the current directory
         this.showCreateFileModal(tabId, pane, currentPath);
@@ -4267,7 +4294,7 @@ class BlackJackApp {
                                     Show Hidden
                                 </label>
                             </div>
-                            <div class="sftp-path" id="sftp-local-path-${tabData.id}">/home/tim</div>
+                            <div class="sftp-path" id="sftp-local-path-${tabData.id}">${this.getUserHomeDirectory()}</div>
                         </div>
                         <div class="sftp-files" id="sftp-local-files-${tabData.id}">
                             <div class="sftp-placeholder">

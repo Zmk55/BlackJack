@@ -562,6 +562,7 @@ func main() {
 
 	// API endpoint for local file listing (protected)
 	http.HandleFunc("/api/local-files", requireAuth(handleLocalFiles))
+	http.HandleFunc("/api/user-home", requireAuth(handleUserHome))
 
 	// API endpoints for file operations (protected)
 	http.HandleFunc("/api/create-file", requireAuth(handleCreateFile))
@@ -965,6 +966,23 @@ func sendMessage(conn *websocket.Conn, msgType, data string) {
 }
 
 // Local file listing handler
+func handleUserHome(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("Error getting user home directory: %v", err)
+		http.Error(w, "Failed to get user home directory", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"homeDir": homeDir})
+}
+
 func handleLocalFiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
