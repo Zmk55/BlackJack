@@ -4397,3 +4397,86 @@ input:checked + .toggle-slider:before {
     border: 1px solid #ef4444;
 }
 
+/* Update Banner Styles */
+#update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border-bottom: 2px solid #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease-out;
+}
+
+#update-banner .update-banner-content {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+#update-banner .update-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#update-banner .update-banner-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#update-banner .update-banner-actions button {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#update-banner .update-banner-actions button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+#update-banner .update-banner-actions button:active {
+    transform: translateY(0);
+}
+
+#update-banner .update-banner-actions #update-reload {
+    background: #10b981;
+    border-color: #059669;
+}
+
+#update-banner .update-banner-actions #update-reload:hover {
+    background: #059669;
+    border-color: #047857;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Adjust app content when banner is visible */
+body:has(#update-banner[style*="block"]) #app {
+    margin-top: 60px;
+}
+
