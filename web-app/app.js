@@ -15,6 +15,7 @@ class BlackJackApp {
         this.showHiddenFiles = { local: {}, remote: {} };
         this.sortStates = { local: {}, remote: {} };
         this.currentEditFile = {};
+        this.hostServices = {}; // Store services for each host
         
         // Initialize persistence
         this.initializePersistence();
@@ -25,17 +26,21 @@ class BlackJackApp {
         };
         this.encryptionKey = this.generateEncryptionKey();
         
-        this.init();
+        // Initialize asynchronously
+        this.init().catch(error => {
+            console.error('Failed to initialize app:', error);
+        });
     }
 
-    init() {
+    async init() {
         this.setupEventListeners();
-        this.loadData();
+        await this.loadData();
         this.loadIntegrations();
         this.renderTreeView();
         this.renderHosts();
         this.setupSearch();
         this.setupSSHValidation();
+        this.setupSettingsModal();
     }
 
     setupEventListeners() {
@@ -75,66 +80,121 @@ class BlackJackApp {
         });
     }
 
-    loadData() {
-        // Load hosts from localStorage or use sample data
+    async loadData() {
+        try {
+            // Load hosts from encrypted storage
+            const savedHosts = await this.loadEncryptedData('hosts');
+            if (savedHosts && Array.isArray(savedHosts) && savedHosts.length > 0) {
+                this.hosts = savedHosts;
+            } else {
+                // Sample data
+                this.hosts = [
+                    { id: '1', name: 'Adguard.local', address: '192.168.1.57', user: 'tim', port: 22, groupId: 'group-1', tags: [
+                        { name: 'production', color: 'green' },
+                        { name: 'dns', color: 'blue' }
+                    ]},
+                    { id: '2', name: 'Web Server', address: '192.168.1.100', user: 'admin', port: 22, groupId: 'group-2', tags: [
+                        { name: 'production', color: 'green' },
+                        { name: 'web', color: 'purple' }
+                    ]},
+                    { id: '3', name: 'Database', address: '192.168.1.101', user: 'root', port: 22, groupId: 'group-2', tags: [
+                        { name: 'production', color: 'green' },
+                        { name: 'database', color: 'orange' }
+                    ]}
+                ];
+                // Save sample data to encrypted storage
+                await this.saveEncryptedData('hosts', this.hosts);
+            }
+
+            // Load groups from encrypted storage
+            const savedGroups = await this.loadEncryptedData('groups');
+            if (savedGroups && Array.isArray(savedGroups) && savedGroups.length > 0) {
+                this.groups = savedGroups;
+            } else {
+                // Sample groups
+                this.groups = [
+                    { id: 'group-1', name: 'Physical Servers', parentId: null, description: 'Main physical servers', expanded: true },
+                    { id: 'group-2', name: 'VMs', parentId: null, description: 'Virtual machines', expanded: true },
+                    { id: 'group-3', name: 'Development', parentId: 'group-2', description: 'Dev environment VMs', expanded: false },
+                    { id: 'group-4', name: 'Production', parentId: 'group-2', description: 'Production VMs', expanded: false }
+                ];
+                // Save sample data to encrypted storage
+                await this.saveEncryptedData('groups', this.groups);
+            }
+
+            // Load tags from encrypted storage
+            const savedTags = await this.loadEncryptedData('tags');
+            if (savedTags && Array.isArray(savedTags) && savedTags.length > 0) {
+                this.tags = savedTags;
+            } else {
+                // Sample tags
+                this.tags = ['production', 'development', 'staging', 'dns', 'web', 'database', 'monitoring'];
+                // Save sample data to encrypted storage
+                await this.saveEncryptedData('tags', this.tags);
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+            // Fallback to localStorage if encrypted storage fails
+            this.loadDataFromLocalStorage();
+        }
+    }
+
+    loadDataFromLocalStorage() {
+        console.warn('Loading data from localStorage fallback');
+        
+        // Load hosts from localStorage
         const savedHosts = localStorage.getItem('blackjack-hosts');
         if (savedHosts) {
             this.hosts = JSON.parse(savedHosts);
         } else {
-            // Sample data
-            this.hosts = [
-                { id: '1', name: 'Adguard.local', address: '192.168.1.57', user: 'tim', port: 22, groupId: 'group-1', tags: [
-                    { name: 'production', color: 'green' },
-                    { name: 'dns', color: 'blue' }
-                ]},
-                { id: '2', name: 'Web Server', address: '192.168.1.100', user: 'admin', port: 22, groupId: 'group-2', tags: [
-                    { name: 'production', color: 'green' },
-                    { name: 'web', color: 'purple' }
-                ]},
-                { id: '3', name: 'Database', address: '192.168.1.101', user: 'root', port: 22, groupId: 'group-2', tags: [
-                    { name: 'production', color: 'green' },
-                    { name: 'database', color: 'orange' }
-                ]}
-            ];
-            this.saveHosts();
+            this.hosts = [];
         }
 
-        // Load groups
+        // Load groups from localStorage
         const savedGroups = localStorage.getItem('blackjack-groups');
         if (savedGroups) {
             this.groups = JSON.parse(savedGroups);
         } else {
-            // Sample groups
-            this.groups = [
-                { id: 'group-1', name: 'Physical Servers', parentId: null, description: 'Main physical servers', expanded: true },
-                { id: 'group-2', name: 'VMs', parentId: null, description: 'Virtual machines', expanded: true },
-                { id: 'group-3', name: 'Development', parentId: 'group-2', description: 'Dev environment VMs', expanded: false },
-                { id: 'group-4', name: 'Production', parentId: 'group-2', description: 'Production VMs', expanded: false }
-            ];
-            this.saveGroups();
+            this.groups = [];
         }
 
-        // Load tags
+        // Load tags from localStorage
         const savedTags = localStorage.getItem('blackjack-tags');
         if (savedTags) {
             this.tags = JSON.parse(savedTags);
         } else {
-            // Sample tags
-            this.tags = ['production', 'development', 'staging', 'dns', 'web', 'database', 'monitoring'];
-            this.saveTags();
+            this.tags = [];
         }
     }
 
-    saveHosts() {
-        localStorage.setItem('blackjack-hosts', JSON.stringify(this.hosts));
+    async saveHosts() {
+        try {
+            await this.saveEncryptedData('hosts', this.hosts);
+        } catch (error) {
+            console.error('Failed to save hosts to encrypted storage:', error);
+            // Fallback to localStorage
+            localStorage.setItem('blackjack-hosts', JSON.stringify(this.hosts));
+        }
     }
 
-    saveGroups() {
-        localStorage.setItem('blackjack-groups', JSON.stringify(this.groups));
+    async saveGroups() {
+        try {
+            await this.saveEncryptedData('groups', this.groups);
+        } catch (error) {
+            console.error('Failed to save groups to encrypted storage:', error);
+            // Fallback to localStorage
+            localStorage.setItem('blackjack-groups', JSON.stringify(this.groups));
+        }
     }
 
-    saveTags() {
-        localStorage.setItem('blackjack-tags', JSON.stringify(this.tags));
+    async saveTags() {
+        try {
+            await this.saveEncryptedData('tags', this.tags);
+        } catch (error) {
+            console.error('Failed to save tags to encrypted storage:', error);
+            // Fallback to localStorage
+            localStorage.setItem('blackjack-tags', JSON.stringify(this.tags));
+        }
     }
 
     renderTreeView() {
@@ -213,40 +273,986 @@ class BlackJackApp {
             }
         }
 
-        // Render main table
-        hostTableBody.innerHTML = filteredHosts.map(host => `
-            <tr>
-                <td>
-                    <div class="host-name-cell">
-                        <div class="host-name">${host.name}</div>
-                        ${this.getHostDisplayTags(host).length > 0 ? `
-                            <div class="host-tags-inline">
-                                ${this.getHostDisplayTags(host).map(tag => `
-                                    <span class="host-tag-inline tag-${tag.color || 'gray'}">${tag.icon ? tag.icon + ' ' : ''}${tag.name}</span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
+        // Render modern host cards
+        const hostGrid = document.getElementById('host-grid');
+        hostGrid.innerHTML = filteredHosts.map(host => this.renderHostCard(host)).join('');
+        
+        // Update selection state
+        this.updateSelectionState();
+    }
+
+    renderHostCard(host) {
+        const tags = this.getHostDisplayTags(host);
+        const services = this.hostServices[host.id] || [];
+        const urlServices = services.filter(service => service.type === 'web' || service.url.startsWith('http'));
+        
+        return `
+            <div class="host-card" data-host-id="${host.id}" oncontextmenu="app.showHostContextMenu(event, '${host.id}')">
+                <div class="host-card-header">
+                    <div class="host-card-title">
+                        <h3 class="host-name">${host.name}</h3>
+                        <div class="host-address">${host.address}</div>
                     </div>
-                </td>
-                <td>${host.address}</td>
-                <td>${host.user}</td>
-                <td>${host.port}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" onclick="app.connectToHost('${host.id}')">Connect</button>
-                        <button class="btn btn-edit" onclick="app.editHost('${host.id}')" title="Edit Host">
-                            <span class="icon">✏️</span>
-                        </button>
-                        <button class="btn btn-clone" onclick="app.cloneHost('${host.id}')" title="Clone Host">
-                            <span class="icon">📋</span>
-                        </button>
-                        <button class="btn btn-danger" onclick="app.deleteHost('${host.id}')" title="Delete Host">
-                            <span class="icon">🗑️</span>
-                        </button>
+                    <input type="checkbox" class="host-card-checkbox" onchange="app.toggleHostSelection('${host.id}')">
+                </div>
+                
+                ${tags.length > 0 ? `
+                    <div class="host-tags">
+                        ${tags.map(tag => `
+                            <span class="host-tag tag-${tag.color || 'gray'}">
+                                ${tag.icon ? tag.icon + ' ' : ''}${tag.name}
+                            </span>
+                        `).join('')}
                     </div>
-                </td>
-            </tr>
-        `).join('');
+                ` : ''}
+                
+                <div class="host-details">
+                    <div class="host-detail">
+                        <div class="host-detail-label">User</div>
+                        <div class="host-detail-value">${host.user}</div>
+                    </div>
+                    <div class="host-detail">
+                        <div class="host-detail-label">Port</div>
+                        <div class="host-detail-value">${host.port}</div>
+                    </div>
+                </div>
+                
+                <div class="host-status">
+                    <div class="status-indicator"></div>
+                    <span>Online</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Selection Management
+    selectedHosts = new Set();
+
+    toggleHostSelection(hostId) {
+        if (this.selectedHosts.has(hostId)) {
+            this.selectedHosts.delete(hostId);
+        } else {
+            this.selectedHosts.add(hostId);
+        }
+        
+        // Update card visual state
+        const card = document.querySelector(`[data-host-id="${hostId}"]`);
+        if (card) {
+            card.classList.toggle('selected', this.selectedHosts.has(hostId));
+        }
+        
+        this.updateSelectionState();
+    }
+
+    updateSelectionState() {
+        const toolbar = document.getElementById('action-toolbar');
+        const selectedCount = document.getElementById('selected-count');
+        const connectBtn = document.getElementById('connect-btn');
+        const editBtn = document.getElementById('edit-btn');
+        const cloneBtn = document.getElementById('clone-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        
+        const count = this.selectedHosts.size;
+        
+        if (count > 0) {
+            toolbar.style.display = 'flex';
+            selectedCount.textContent = `${count} host${count > 1 ? 's' : ''} selected`;
+            
+            // Enable/disable buttons based on selection
+            connectBtn.disabled = count === 0;
+            editBtn.disabled = count !== 1;
+            cloneBtn.disabled = count !== 1;
+            deleteBtn.disabled = count === 0;
+        } else {
+            toolbar.style.display = 'none';
+        }
+    }
+
+    // Action Methods
+    connectSelectedHosts() {
+        this.selectedHosts.forEach(hostId => {
+            this.connectToHost(hostId);
+        });
+    }
+
+    editSelectedHost() {
+        if (this.selectedHosts.size === 1) {
+            const hostId = Array.from(this.selectedHosts)[0];
+            this.editHost(hostId);
+        }
+    }
+
+    cloneSelectedHost() {
+        if (this.selectedHosts.size === 1) {
+            const hostId = Array.from(this.selectedHosts)[0];
+            this.cloneHost(hostId);
+        }
+    }
+
+    deleteSelectedHosts() {
+        if (this.selectedHosts.size > 0) {
+            const hostNames = Array.from(this.selectedHosts).map(id => {
+                const host = this.hosts.find(h => h.id === id);
+                return host ? host.name : 'Unknown';
+            }).join(', ');
+            
+            if (confirm(`Are you sure you want to delete ${hostNames}?`)) {
+                this.selectedHosts.forEach(hostId => {
+                    this.deleteHost(hostId);
+                });
+                this.selectedHosts.clear();
+                this.updateSelectionState();
+            }
+        }
+    }
+
+    // Authentication functions
+    async logout() {
+        try {
+            const response = await fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                // Redirect to login page
+                window.location.href = '/login.html';
+            } else {
+                console.error('Logout failed');
+                // Force redirect anyway
+                window.location.href = '/login.html';
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Force redirect anyway
+            window.location.href = '/login.html';
+        }
+    }
+
+    // Backup & Restore Functions
+    async exportFullDatabase() {
+        try {
+            const response = await fetch('/api/backup/export-full', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Export failed: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `blackjack-backup-${new Date().toISOString().split('T')[0]}.enc`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            this.showNotification('✅ Full database exported successfully!', 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showNotification(`❌ Export failed: ${error.message}`, 'error');
+        }
+    }
+
+    showImportDatabaseModal() {
+        console.log('Opening import database modal...');
+        const modal = document.getElementById('import-database-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            this.resetImportDatabaseModal();
+            this.setupDatabaseFileInput();
+        } else {
+            console.error('Import database modal not found!');
+        }
+    }
+
+    closeImportDatabaseModal() {
+        const modal = document.getElementById('import-database-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.resetImportDatabaseModal();
+        }
+    }
+
+    resetImportDatabaseModal() {
+        // Hide all sections except file selection
+        document.getElementById('comparison-section').style.display = 'none';
+        document.getElementById('duplicate-analysis').style.display = 'none';
+        document.getElementById('import-options').style.display = 'none';
+        
+        // Clear file input
+        const fileInput = document.getElementById('database-file-input');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Disable import button
+        const importBtn = document.getElementById('execute-import-btn');
+        if (importBtn) {
+            importBtn.disabled = true;
+        }
+        
+        // Reset import data
+        this.importData = null;
+    }
+
+    setupDatabaseFileInput() {
+        const fileInput = document.getElementById('database-file-input');
+        const uploadArea = document.getElementById('database-file-upload');
+        
+        if (!fileInput || !uploadArea) return;
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.handleDatabaseFileUpload(file);
+            }
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.enc')) {
+                this.handleDatabaseFileUpload(file);
+            }
+        });
+    }
+
+    async handleDatabaseFileUpload(file) {
+        try {
+            console.log('Processing database file:', file.name);
+            
+            // Read and parse the file
+            const content = await this.readFileAsText(file);
+            const importData = JSON.parse(content);
+            
+            // Store import data
+            this.importData = importData;
+            
+            // Show comparison
+            this.showDataComparison(importData);
+            
+            // Analyze duplicates
+            this.analyzeDuplicates(importData);
+            
+            // Show import options
+            this.showImportOptions();
+            
+            // Enable import button
+            document.getElementById('execute-import-btn').disabled = false;
+            
+        } catch (error) {
+            console.error('Error processing file:', error);
+            this.showNotification(`❌ Error reading file: ${error.message}`, 'error');
+        }
+    }
+
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+
+    showDataComparison(importData) {
+        // Update current data counts
+        document.getElementById('current-hosts').textContent = this.hosts.length;
+        document.getElementById('current-groups').textContent = this.groups.length;
+        document.getElementById('current-tags').textContent = this.tags.length;
+        document.getElementById('current-hosts-count').textContent = `${this.hosts.length} hosts`;
+
+        // Update import data counts
+        const importHosts = importData.hosts || [];
+        const importGroups = importData.groups || [];
+        const importTags = importData.tags || [];
+        
+        document.getElementById('import-hosts').textContent = importHosts.length;
+        document.getElementById('import-groups').textContent = importGroups.length;
+        document.getElementById('import-tags').textContent = importTags.length;
+        document.getElementById('import-hosts-count').textContent = `${importHosts.length} hosts`;
+
+        // Show comparison section
+        document.getElementById('comparison-section').style.display = 'block';
+    }
+
+    analyzeDuplicates(importData) {
+        const importHosts = importData.hosts || [];
+        const duplicateSummary = document.getElementById('duplicate-summary');
+        
+        let exactDuplicates = 0;
+        let similarDuplicates = 0;
+        let newHosts = 0;
+        
+        const duplicateItems = [];
+        
+        importHosts.forEach(importHost => {
+            const existingHost = this.hosts.find(h => 
+                h.name === importHost.name && h.address === importHost.address
+            );
+            
+            if (existingHost) {
+                // Check if it's an exact duplicate
+                const isExact = this.isExactDuplicate(existingHost, importHost);
+                if (isExact) {
+                    exactDuplicates++;
+                    duplicateItems.push({
+                        name: importHost.name,
+                        details: `${importHost.address}:${importHost.port}`,
+                        status: 'exact',
+                        statusText: 'Exact Match'
+                    });
+                } else {
+                    similarDuplicates++;
+                    duplicateItems.push({
+                        name: importHost.name,
+                        details: `${importHost.address}:${importHost.port}`,
+                        status: 'similar',
+                        statusText: 'Similar (Different Settings)'
+                    });
+                }
+            } else {
+                newHosts++;
+                duplicateItems.push({
+                    name: importHost.name,
+                    details: `${importHost.address}:${importHost.port}`,
+                    status: 'new',
+                    statusText: 'New Host'
+                });
+            }
+        });
+        
+        // Render duplicate summary
+        duplicateSummary.innerHTML = `
+            <div class="duplicate-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Exact Matches:</span>
+                    <span class="stat-value exact">${exactDuplicates}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Similar (Different Settings):</span>
+                    <span class="stat-value similar">${similarDuplicates}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">New Hosts:</span>
+                    <span class="stat-value new">${newHosts}</span>
+                </div>
+            </div>
+            <div class="duplicate-list">
+                ${duplicateItems.map(item => `
+                    <div class="duplicate-item">
+                        <div class="duplicate-info">
+                            <div class="duplicate-name">${item.name}</div>
+                            <div class="duplicate-details">${item.details}</div>
+                        </div>
+                        <span class="duplicate-status ${item.status}">${item.statusText}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Show duplicate analysis section
+        document.getElementById('duplicate-analysis').style.display = 'block';
+    }
+
+    isExactDuplicate(host1, host2) {
+        // Compare key properties to determine if hosts are identical
+        const props = ['name', 'address', 'port', 'username', 'groupId'];
+        return props.every(prop => host1[prop] === host2[prop]);
+    }
+
+    showImportOptions() {
+        // Setup option card click handlers
+        const optionCards = document.querySelectorAll('.option-card');
+        optionCards.forEach(card => {
+            card.addEventListener('click', () => {
+                // Remove selected class from all cards
+                optionCards.forEach(c => c.classList.remove('selected'));
+                // Add selected class to clicked card
+                card.classList.add('selected');
+                // Check the radio button
+                const radio = card.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+            });
+        });
+        
+        // Show import options section
+        document.getElementById('import-options').style.display = 'block';
+    }
+
+    async executeDatabaseImport() {
+        if (!this.importData) {
+            this.showNotification('❌ No import data available', 'error');
+            return;
+        }
+
+        const importMode = document.querySelector('input[name="import-mode"]:checked')?.value || 'merge';
+        
+        try {
+            // Create a temporary file for the import
+            const blob = new Blob([JSON.stringify(this.importData)], { type: 'application/json' });
+            const file = new File([blob], 'import.enc', { type: 'application/json' });
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/backup/import-full', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error(`Import failed: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                this.showNotification('✅ Database imported successfully! Reloading...', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                throw new Error(result.error || 'Import failed');
+            }
+        } catch (error) {
+            console.error('Import error:', error);
+            this.showNotification(`❌ Import failed: ${error.message}`, 'error');
+        }
+    }
+
+    showHostExportModal() {
+        console.log('Opening host export modal...');
+        const modal = document.getElementById('export-hosts-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            this.populateExportHostList();
+        } else {
+            console.error('Export hosts modal not found!');
+        }
+    }
+
+    closeExportHostsModal() {
+        const modal = document.getElementById('export-hosts-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.resetExportHostsModal();
+        }
+    }
+
+    resetExportHostsModal() {
+        // Clear the host list
+        const hostList = document.getElementById('export-host-list');
+        if (hostList) {
+            hostList.innerHTML = '';
+        }
+        
+        // Reset count
+        const countElement = document.getElementById('export-count');
+        if (countElement) {
+            countElement.textContent = '0 hosts selected';
+        }
+        
+        // Disable export button
+        const exportBtn = document.getElementById('export-selected-btn');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+        }
+    }
+
+    populateExportHostList() {
+        const hostList = document.getElementById('export-host-list');
+        if (!hostList) return;
+
+        hostList.innerHTML = '';
+
+        this.hosts.forEach(host => {
+            const hostItem = document.createElement('div');
+            hostItem.className = 'export-host-item';
+            hostItem.innerHTML = `
+                <input type="checkbox" id="export-host-${host.id}" onchange="app.toggleExportHostSelection('${host.id}')">
+                <div class="export-host-item-info">
+                    <div class="export-host-item-name">${host.name || 'Unnamed Host'}</div>
+                    <div class="export-host-item-details">${host.address || 'No Address'}:${host.port || '22'} • ${host.username || 'No Username'}</div>
+                    ${host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? `
+                        <div class="export-host-item-tags">
+                            ${host.tags.map(tag => `<span class="export-host-item-tag">${typeof tag === 'string' ? tag : tag.name || 'Unknown Tag'}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            hostList.appendChild(hostItem);
+        });
+    }
+
+    toggleExportHostSelection(hostId) {
+        const checkbox = document.getElementById(`export-host-${hostId}`);
+        if (!checkbox) return;
+
+        const isSelected = checkbox.checked;
+        this.updateExportSelectionCount();
+    }
+
+    selectAllExportHosts() {
+        const checkboxes = document.querySelectorAll('#export-host-list input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        this.updateExportSelectionCount();
+    }
+
+    deselectAllExportHosts() {
+        const checkboxes = document.querySelectorAll('#export-host-list input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.updateExportSelectionCount();
+    }
+
+    updateExportSelectionCount() {
+        const checkboxes = document.querySelectorAll('#export-host-list input[type="checkbox"]:checked');
+        const count = checkboxes.length;
+        
+        const countElement = document.getElementById('export-count');
+        if (countElement) {
+            countElement.textContent = `${count} host${count !== 1 ? 's' : ''} selected`;
+        }
+        
+        const exportBtn = document.getElementById('export-selected-btn');
+        if (exportBtn) {
+            exportBtn.disabled = count === 0;
+        }
+    }
+
+    executeHostExport() {
+        const checkboxes = document.querySelectorAll('#export-host-list input[type="checkbox"]:checked');
+        if (checkboxes.length === 0) {
+            alert('Please select at least one host to export.');
+            return;
+        }
+
+        const selectedHostIds = Array.from(checkboxes).map(cb => cb.id.replace('export-host-', ''));
+        const hostsToExport = selectedHostIds.map(hostId => {
+            return this.hosts.find(h => h.id === hostId);
+        }).filter(host => host);
+
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            exportType: 'individual',
+            hosts: hostsToExport
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `blackjack-hosts-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Close the modal
+        this.closeExportHostsModal();
+        
+        // Show success message
+        this.showNotification(`✅ Exported ${hostsToExport.length} host${hostsToExport.length !== 1 ? 's' : ''} successfully!`, 'success');
+    }
+
+    importHosts() {
+        this.closeModal('settings-modal');
+        this.showImportHostsModal();
+    }
+
+    showImportHostsModal() {
+        const modal = document.getElementById('import-hosts-modal');
+        modal.style.display = 'block';
+        
+        // Reset modal state
+        this.resetImportHostsModal();
+        
+        // Setup file input
+        this.setupHostFileInput();
+    }
+
+    closeImportHostsModal() {
+        const modal = document.getElementById('import-hosts-modal');
+        modal.style.display = 'none';
+        this.resetImportHostsModal();
+    }
+
+    resetImportHostsModal() {
+        // Hide all sections except file upload
+        document.getElementById('host-preview-section').style.display = 'none';
+        document.getElementById('host-group-assignment').style.display = 'none';
+        document.getElementById('host-conflict-resolution').style.display = 'none';
+        document.getElementById('import-hosts-btn').disabled = true;
+        
+        // Clear file input
+        const fileInput = document.getElementById('host-file-input');
+        fileInput.value = '';
+        
+        // Reset form
+        document.getElementById('default-group-select').value = '';
+        document.querySelector('input[name="host-conflict-mode"][value="skip"]').checked = true;
+        
+        // Clear preview
+        document.getElementById('host-preview-list').innerHTML = '';
+        document.getElementById('host-count').textContent = '0';
+    }
+
+    setupHostFileInput() {
+        const fileInput = document.getElementById('host-file-input');
+        const uploadArea = document.getElementById('host-file-upload');
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.handleHostFileUpload(file);
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                this.handleHostFileUpload(file);
+            }
+        });
+    }
+
+    async handleHostFileUpload(file) {
+        try {
+            const text = await file.text();
+            let importData;
+            
+            try {
+                importData = JSON.parse(text);
+            } catch (e) {
+                throw new Error('Invalid JSON file');
+            }
+            
+            if (!importData.hosts || !Array.isArray(importData.hosts)) {
+                throw new Error('Invalid backup file format');
+            }
+            
+            this.importHostsData = importData;
+            this.showHostImportPreview(importData.hosts);
+            
+        } catch (error) {
+            console.error('File upload error:', error);
+            this.showNotification(`❌ Error reading file: ${error.message}`, 'error');
+        }
+    }
+
+    showHostImportPreview(hosts) {
+        // Populate group dropdown
+        this.populateImportGroupDropdown();
+        
+        // Show preview
+        document.getElementById('host-preview-section').style.display = 'block';
+        document.getElementById('host-group-assignment').style.display = 'block';
+        document.getElementById('host-conflict-resolution').style.display = 'block';
+        
+        // Update count
+        document.getElementById('host-count').textContent = hosts.length;
+        
+        // Create preview items
+        const previewList = document.getElementById('host-preview-list');
+        previewList.innerHTML = '';
+        
+        hosts.forEach((host, index) => {
+            const existingHost = this.hosts.find(h => h.name === host.name && h.address === host.address);
+            const status = existingHost ? 'existing' : 'new';
+            const statusText = existingHost ? 'Existing' : 'New';
+            
+            const item = document.createElement('div');
+            item.className = 'import-preview-item';
+            item.innerHTML = `
+                <input type="checkbox" id="host-${index}" checked>
+                <div class="import-preview-item-info">
+                    <div class="import-preview-item-name">${host.name}</div>
+                    <div class="import-preview-item-details">${host.address}:${host.port} (${host.user})</div>
+                </div>
+                <span class="import-preview-item-status ${status}">${statusText}</span>
+            `;
+            previewList.appendChild(item);
+        });
+        
+        // Enable import button
+        document.getElementById('import-hosts-btn').disabled = false;
+    }
+
+    populateImportGroupDropdown() {
+        const select = document.getElementById('default-group-select');
+        const currentOptions = select.querySelectorAll('option:not([value=""]):not([value="root"])');
+        currentOptions.forEach(option => option.remove());
+        
+        // Add current groups
+        this.groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = group.name;
+            select.appendChild(option);
+        });
+    }
+
+    selectAllHosts() {
+        const checkboxes = document.querySelectorAll('#host-preview-list input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = true);
+    }
+
+    deselectAllHosts() {
+        const checkboxes = document.querySelectorAll('#host-preview-list input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+    }
+
+    async executeHostImport() {
+        const checkboxes = document.querySelectorAll('#host-preview-list input[type="checkbox"]:checked');
+        if (checkboxes.length === 0) {
+            this.showNotification('⚠️ Please select at least one host to import', 'warning');
+            return;
+        }
+        
+        const selectedHosts = Array.from(checkboxes).map(checkbox => {
+            const index = parseInt(checkbox.id.split('-')[1]);
+            return this.importHostsData.hosts[index];
+        });
+        
+        const defaultGroup = document.getElementById('default-group-select').value;
+        const conflictMode = document.querySelector('input[name="host-conflict-mode"]:checked').value;
+        
+        try {
+            const response = await fetch('/api/backup/import-hosts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    hosts: selectedHosts,
+                    defaultGroup: defaultGroup,
+                    conflictMode: conflictMode
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Import failed: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            if (result.success) {
+                this.showNotification(`✅ Successfully imported ${result.imported} hosts!`, 'success');
+                this.closeImportHostsModal();
+                
+                // Reload data
+                await this.loadData();
+                this.renderHosts();
+                this.renderTreeView();
+            } else {
+                throw new Error(result.error || 'Import failed');
+            }
+        } catch (error) {
+            console.error('Import error:', error);
+            this.showNotification(`❌ Import failed: ${error.message}`, 'error');
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Style the notification
+        Object.assign(notification.style, {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '12px 20px',
+            borderRadius: '6px',
+            color: '#ffffff',
+            fontWeight: '500',
+            zIndex: '10000',
+            maxWidth: '400px',
+            wordWrap: 'break-word',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            transform: 'translateX(100%)',
+            transition: 'transform 0.3s ease'
+        });
+        
+        // Set background color based on type
+        const colors = {
+            success: '#10b981',
+            error: '#ef4444',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        notification.style.backgroundColor = colors[type] || colors.info;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+    }
+
+    // Modern Settings Modal Functions
+    setupSettingsModal() {
+        console.log('Setting up modern settings modal...');
+        
+        // Setup navigation
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        console.log(`Found ${navItems.length} navigation items`);
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const section = item.getAttribute('data-section');
+                console.log(`Switching to section: ${section}`);
+                this.switchSettingsSection(section);
+            });
+        });
+
+        // Setup theme selector
+        const themeOptions = document.querySelectorAll('.theme-option');
+        themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.getAttribute('data-theme');
+                this.selectTheme(theme);
+            });
+        });
+
+        // Setup toggle switches
+        const toggles = document.querySelectorAll('.toggle-switch input[type="checkbox"]');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                this.handleToggleChange(e.target);
+            });
+        });
+
+        // Setup modern inputs
+        const inputs = document.querySelectorAll('.modern-input');
+        inputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                this.handleInputChange(e.target);
+            });
+        });
+    }
+
+    switchSettingsSection(sectionName) {
+        // Update navigation
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-section') === sectionName) {
+                item.classList.add('active');
+            }
+        });
+
+        // Update content sections
+        const sections = document.querySelectorAll('.settings-section');
+        sections.forEach(section => {
+            section.classList.remove('active');
+            if (section.id === `settings-${sectionName}`) {
+                section.classList.add('active');
+            }
+        });
+    }
+
+    selectTheme(theme) {
+        const themeOptions = document.querySelectorAll('.theme-option');
+        themeOptions.forEach(option => {
+            option.classList.remove('active');
+            if (option.getAttribute('data-theme') === theme) {
+                option.classList.add('active');
+            }
+        });
+
+        // Apply theme (placeholder for future implementation)
+        console.log(`Theme changed to: ${theme}`);
+        this.showNotification(`Theme changed to ${theme}`, 'success');
+    }
+
+    handleToggleChange(toggle) {
+        const setting = toggle.id;
+        const value = toggle.checked;
+        
+        console.log(`Setting ${setting} changed to: ${value}`);
+        this.showNotification(`${setting} ${value ? 'enabled' : 'disabled'}`, 'success');
+    }
+
+    handleInputChange(input) {
+        const setting = input.id || input.name;
+        const value = input.value;
+        
+        console.log(`Setting ${setting} changed to: ${value}`);
+    }
+
+    saveSettings() {
+        // Collect all settings
+        const settings = {
+            theme: document.querySelector('.theme-option.active')?.getAttribute('data-theme') || 'dark',
+            autoSave: document.getElementById('auto-save')?.checked || false,
+            sessionTimeout: document.querySelector('.modern-input')?.value || 30,
+            requirePassword: document.getElementById('require-password')?.checked || false
+        };
+
+        // Save settings (placeholder for future implementation)
+        console.log('Saving settings:', settings);
+        this.showNotification('Settings saved successfully!', 'success');
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+            this.closeModal('settings-modal');
+        }, 1000);
     }
 
     selectHost(hostId) {
@@ -319,6 +1325,11 @@ class BlackJackApp {
 
     closeModal(modalId) {
         document.getElementById(modalId).style.display = 'none';
+        
+        // Reset SSH key button when closing add-host modal
+        if (modalId === 'add-host-modal') {
+            this.resetSSHKeyButton();
+        }
     }
 
     showAddHost() {
@@ -352,6 +1363,9 @@ class BlackJackApp {
         const currentGroupValue = hostGroupSelect.value; // Save the group value
         form.reset();
         hostGroupSelect.value = currentGroupValue; // Restore the group value
+        
+        // Reset SSH key button to initial state
+        this.resetSSHKeyButton();
         form.dataset.editing = '';
         document.getElementById('host-submit-btn').textContent = 'Add Host';
         
@@ -359,6 +1373,12 @@ class BlackJackApp {
         const modal = document.getElementById('add-host-modal');
         const title = modal.querySelector('h3');
         title.textContent = 'Add New Host';
+        
+        // Hide Services button for new hosts
+        const servicesBtn = document.getElementById('host-services-btn');
+        if (servicesBtn) {
+            servicesBtn.style.display = 'none';
+        }
         
         document.getElementById('add-host-modal').style.display = 'block';
     }
@@ -2320,6 +3340,501 @@ class BlackJackApp {
         }
     }
 
+    // Host Services Management
+    openHostServices() {
+        if (!this.currentHost) return;
+        
+        const modal = document.getElementById('host-services-modal');
+        if (!modal) return;
+        
+        // Update modal info
+        document.getElementById('host-services-name').textContent = this.currentHost.name;
+        document.getElementById('host-services-address').textContent = this.currentHost.address;
+        
+        // Show modal
+        modal.style.display = 'block';
+        
+        // Load services for this host
+        this.loadHostServices();
+    }
+
+    closeHostServicesModal() {
+        const modal = document.getElementById('host-services-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    loadHostServices() {
+        if (!this.currentHost) return;
+        
+        const hostId = this.currentHost.id;
+        const services = this.hostServices[hostId] || [];
+        
+        const servicesList = document.getElementById('host-services-list');
+        const addServiceBtn = document.querySelector('.host-services-toolbar .host-services-btn-primary');
+        
+        if (!servicesList) return;
+        
+        if (services.length === 0) {
+            // Hide the top Add Service button when no services exist
+            if (addServiceBtn) {
+                addServiceBtn.style.display = 'none';
+            }
+            
+            servicesList.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #a0aec0;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🌐</div>
+                    <h3>No Services Configured</h3>
+                    <p>Add services to quickly access websites and applications on this host.</p>
+                    <button class="host-services-btn host-services-btn-primary" onclick="app.showAddServiceForm()">
+                        ➕ Add Your First Service
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Show the top Add Service button when services exist
+        if (addServiceBtn) {
+            addServiceBtn.style.display = 'inline-block';
+        }
+        
+        servicesList.innerHTML = services.map(service => this.renderServiceItem(service)).join('');
+    }
+
+    renderServiceItem(service) {
+        const getServiceIcon = (type) => {
+            const icons = {
+                'web': '🌐',
+                'api': '⚡',
+                'database': '🗄️',
+                'ssh': '🔐',
+                'ftp': '📁',
+                'other': '🔧'
+            };
+            return icons[type] || icons.other;
+        };
+        
+        const getServiceIconClass = (type) => {
+            const classes = {
+                'web': 'service-icon-web',
+                'api': 'service-icon-api',
+                'database': 'service-icon-db',
+                'ssh': 'service-icon-ssh',
+                'ftp': 'service-icon-ftp',
+                'other': 'service-icon-other'
+            };
+            return classes[type] || classes.other;
+        };
+        
+        const fullUrl = service.url.startsWith('http') ? service.url : `http://${service.url}`;
+        
+        return `
+            <div class="host-service-item" onclick="app.openService('${service.id}')">
+                <div class="host-service-header">
+                    <div class="host-service-name">
+                        <span class="host-service-icon ${getServiceIconClass(service.type)}">${getServiceIcon(service.type)}</span>
+                        <span>${service.name}</span>
+                    </div>
+                    <div class="host-service-actions" onclick="event.stopPropagation()">
+                        <button class="host-service-btn host-service-btn-primary" onclick="app.openService('${service.id}')">
+                            🔗 Open
+                        </button>
+                        <button class="host-service-btn host-service-btn-secondary" onclick="app.showEditServiceForm('${service.id}')">
+                            ✏️ Edit
+                        </button>
+                        <button class="host-service-btn host-service-btn-danger" onclick="app.deleteHostService('${service.id}')">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="host-service-details">
+                    <div class="host-service-detail">
+                        <div class="host-service-detail-label">URL</div>
+                        <div class="host-service-detail-value">
+                            <a href="${fullUrl}" target="_blank" class="host-service-url" onclick="event.stopPropagation()">
+                                ${service.url}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="host-service-detail">
+                        <div class="host-service-detail-label">Type</div>
+                        <div class="host-service-detail-value">${service.type}</div>
+                    </div>
+                    <div class="host-service-detail">
+                        <div class="host-service-detail-label">Port</div>
+                        <div class="host-service-detail-value">${service.port || 'Default'}</div>
+                    </div>
+                    <div class="host-service-detail">
+                        <div class="host-service-detail-label">Description</div>
+                        <div class="host-service-detail-value">${service.description || 'No description'}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    showAddServiceForm() {
+        if (!this.currentHost) return;
+        
+        // Reset form
+        document.getElementById('service-form').reset();
+        document.getElementById('service-form-title').textContent = 'Add New Service';
+        
+        // Pre-fill host IP
+        document.getElementById('service-host').value = this.currentHost.address;
+        
+        // Set default values
+        document.getElementById('service-type').value = 'web';
+        document.getElementById('service-protocol').value = 'http';
+        
+        // Clear editing state
+        document.getElementById('service-form').dataset.editing = '';
+        
+        // Show modal
+        document.getElementById('service-form-modal').style.display = 'block';
+        
+        // Update preview
+        this.updateServicePreview();
+        
+        // Add event listeners for real-time preview
+        this.attachServiceFormListeners();
+    }
+
+    showEditServiceForm(serviceId) {
+        if (!this.currentHost) return;
+        
+        const hostId = this.currentHost.id;
+        const service = this.hostServices[hostId]?.find(s => s.id === serviceId);
+        if (!service) return;
+        
+        // Parse the service URL to extract components
+        const urlParts = this.parseServiceUrl(service.url);
+        
+        // Populate form
+        document.getElementById('service-name').value = service.name;
+        document.getElementById('service-type').value = service.type;
+        document.getElementById('service-host').value = urlParts.host;
+        document.getElementById('service-port').value = urlParts.port || '';
+        document.getElementById('service-path').value = urlParts.path || '';
+        document.getElementById('service-protocol').value = urlParts.protocol;
+        document.getElementById('service-description').value = service.description || '';
+        
+        // Set editing state
+        document.getElementById('service-form').dataset.editing = serviceId;
+        document.getElementById('service-form-title').textContent = 'Edit Service';
+        
+        // Show modal
+        document.getElementById('service-form-modal').style.display = 'block';
+        
+        // Update preview
+        this.updateServicePreview();
+        
+        // Add event listeners for real-time preview
+        this.attachServiceFormListeners();
+    }
+
+    parseServiceUrl(url) {
+        try {
+            // Handle URLs that start with protocol
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                const urlObj = new URL(url);
+                return {
+                    protocol: urlObj.protocol.replace(':', ''),
+                    host: urlObj.hostname,
+                    port: urlObj.port || '',
+                    path: urlObj.pathname
+                };
+            }
+            
+            // Handle URLs without protocol (e.g., "host:port/path")
+            const parts = url.split('/');
+            const hostPort = parts[0];
+            const path = parts.length > 1 ? '/' + parts.slice(1).join('/') : '';
+            
+            if (hostPort.includes(':')) {
+                const [host, port] = hostPort.split(':');
+                return {
+                    protocol: 'http',
+                    host: host,
+                    port: port,
+                    path: path
+                };
+            } else {
+                return {
+                    protocol: 'http',
+                    host: hostPort,
+                    port: '',
+                    path: path
+                };
+            }
+        } catch (error) {
+            // Fallback for malformed URLs
+            return {
+                protocol: 'http',
+                host: url,
+                port: '',
+                path: ''
+            };
+        }
+    }
+
+    attachServiceFormListeners() {
+        const inputs = ['service-host', 'service-port', 'service-path', 'service-protocol'];
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.removeEventListener('input', this.updateServicePreview);
+                element.addEventListener('input', () => this.updateServicePreview());
+            }
+        });
+    }
+
+    updateServicePreview() {
+        const host = document.getElementById('service-host').value || '192.168.1.100';
+        const port = document.getElementById('service-port').value;
+        const path = document.getElementById('service-path').value || '';
+        const protocol = document.getElementById('service-protocol').value || 'http';
+        
+        let url = `${protocol}://${host}`;
+        if (port) {
+            url += `:${port}`;
+        }
+        if (path) {
+            url += path;
+        }
+        
+        document.getElementById('service-preview-url').textContent = url;
+    }
+
+    closeServiceForm() {
+        document.getElementById('service-form-modal').style.display = 'none';
+    }
+
+    saveService() {
+        if (!this.currentHost) return;
+        
+        const name = document.getElementById('service-name').value.trim();
+        const type = document.getElementById('service-type').value;
+        const host = document.getElementById('service-host').value.trim();
+        const port = document.getElementById('service-port').value.trim();
+        const path = document.getElementById('service-path').value.trim();
+        const protocol = document.getElementById('service-protocol').value;
+        const description = document.getElementById('service-description').value.trim();
+        
+        if (!name || !type || !host) {
+            alert('Please fill in all required fields (Name, Type, Host/IP)');
+            return;
+        }
+        
+        // Build URL
+        let url = `${protocol}://${host}`;
+        if (port) {
+            url += `:${port}`;
+        }
+        if (path) {
+            url += path;
+        }
+        
+        const service = {
+            id: Date.now().toString(),
+            name: name,
+            url: url,
+            type: type,
+            port: port || null,
+            description: description || null
+        };
+        
+        const hostId = this.currentHost.id;
+        const form = document.getElementById('service-form');
+        const isEditing = form.dataset.editing;
+        
+        if (isEditing) {
+            // Edit existing service
+            if (this.hostServices[hostId]) {
+                const serviceIndex = this.hostServices[hostId].findIndex(s => s.id === isEditing);
+                if (serviceIndex !== -1) {
+                    service.id = isEditing; // Keep original ID
+                    this.hostServices[hostId][serviceIndex] = service;
+                }
+            }
+        } else {
+            // Add new service
+            if (!this.hostServices[hostId]) {
+                this.hostServices[hostId] = [];
+            }
+            this.hostServices[hostId].push(service);
+        }
+        
+        this.saveState();
+        this.loadHostServices();
+        this.closeServiceForm();
+    }
+
+    deleteHostService(serviceId) {
+        if (!this.currentHost) return;
+        
+        if (!confirm('Are you sure you want to delete this service?')) return;
+        
+        const hostId = this.currentHost.id;
+        if (this.hostServices[hostId]) {
+            this.hostServices[hostId] = this.hostServices[hostId].filter(s => s.id !== serviceId);
+            this.saveState();
+            this.loadHostServices();
+        }
+    }
+
+    openService(serviceId) {
+        if (!this.currentHost) return;
+        
+        const hostId = this.currentHost.id;
+        const service = this.hostServices[hostId]?.find(s => s.id === serviceId);
+        if (!service) return;
+        
+        const fullUrl = service.url.startsWith('http') ? service.url : `http://${service.url}`;
+        window.open(fullUrl, '_blank');
+    }
+
+    // Host Context Menu Functions
+    showHostContextMenu(event, hostId) {
+        event.preventDefault();
+        
+        const host = this.hosts.find(h => h.id === hostId);
+        if (!host) return;
+        
+        // Remove any existing context menu
+        this.hideHostContextMenu();
+        
+        const contextMenu = document.createElement('div');
+        contextMenu.className = 'host-context-menu';
+        contextMenu.id = 'host-context-menu';
+        contextMenu.style.left = event.pageX + 'px';
+        contextMenu.style.top = event.pageY + 'px';
+        
+        const services = this.hostServices[hostId] || [];
+        
+        // Build menu items
+        const menuItems = [
+            { 
+                text: '🔗 Connect to Host', 
+                action: () => this.connectToHost(hostId),
+                separator: false
+            },
+            { 
+                text: '✏️ Edit Host', 
+                action: () => this.editHost(hostId),
+                separator: false
+            }
+        ];
+        
+        // Add services if any exist (only URL-based services)
+        const urlServices = services.filter(service => service.type === 'web' || service.url.startsWith('http'));
+        if (urlServices.length > 0) {
+            menuItems.push({ text: '', action: null, separator: true }); // Separator
+            menuItems.push({ 
+                text: '🌐 Quick Access', 
+                action: null, 
+                separator: false,
+                submenu: urlServices.map(service => ({
+                    text: `${this.getServiceIcon(service.type)} ${service.name}`,
+                    action: () => this.openServiceFromContext(service.url),
+                    separator: false
+                }))
+            });
+        }
+        
+        // Add manage services option
+        menuItems.push({ text: '', action: null, separator: true }); // Separator
+        menuItems.push({ 
+            text: '⚙️ Manage Services', 
+            action: () => this.openHostServicesFromContext(hostId),
+            separator: false
+        });
+        
+        // Render menu items
+        menuItems.forEach(item => {
+            if (item.separator) {
+                const separator = document.createElement('div');
+                separator.className = 'host-context-menu-separator';
+                contextMenu.appendChild(separator);
+            } else if (item.submenu) {
+                // Create submenu for services
+                const submenuItem = document.createElement('div');
+                submenuItem.className = 'host-context-menu-item host-context-menu-submenu';
+                submenuItem.innerHTML = `
+                    <span>${item.text}</span>
+                    <span class="host-context-menu-arrow">▶</span>
+                `;
+                
+                const submenu = document.createElement('div');
+                submenu.className = 'host-context-menu-submenu-items';
+                item.submenu.forEach(subItem => {
+                    const submenuSubItem = document.createElement('div');
+                    submenuSubItem.className = 'host-context-menu-item host-context-menu-submenu-item';
+                    submenuSubItem.textContent = subItem.text;
+                    submenuSubItem.onclick = () => {
+                        subItem.action();
+                        this.hideHostContextMenu();
+                    };
+                    submenu.appendChild(submenuSubItem);
+                });
+                
+                submenuItem.appendChild(submenu);
+                contextMenu.appendChild(submenuItem);
+            } else {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'host-context-menu-item';
+                menuItem.textContent = item.text;
+                menuItem.onclick = () => {
+                    item.action();
+                    this.hideHostContextMenu();
+                };
+                contextMenu.appendChild(menuItem);
+            }
+        });
+        
+        document.body.appendChild(contextMenu);
+        
+        // Hide context menu when clicking elsewhere
+        setTimeout(() => {
+            document.addEventListener('click', this.hideHostContextMenu.bind(this), { once: true });
+        }, 100);
+    }
+
+    hideHostContextMenu() {
+        const contextMenu = document.getElementById('host-context-menu');
+        if (contextMenu) {
+            contextMenu.remove();
+        }
+    }
+
+    getServiceIcon(type) {
+        const icons = {
+            'web': '🌐',
+            'api': '⚡',
+            'database': '🗄️',
+            'ssh': '🔐',
+            'ftp': '📁',
+            'other': '🔧'
+        };
+        return icons[type] || icons.other;
+    }
+
+    openServiceFromContext(url) {
+        const fullUrl = url.startsWith('http') ? url : `http://${url}`;
+        window.open(fullUrl, '_blank');
+    }
+
+    openHostServicesFromContext(hostId) {
+        const host = this.hosts.find(h => h.id === hostId);
+        if (!host) return;
+        
+        // Set current host and open services modal
+        this.currentHost = host;
+        this.openHostServices();
+    }
+
     saveFile(tabId, filePath, isRemote) {
         const content = document.getElementById(`file-content-${tabId}`).value;
         
@@ -3008,6 +4523,86 @@ class BlackJackApp {
         return canvas.toDataURL().slice(-16);
     }
 
+    // Encrypted data storage methods
+    async saveEncryptedData(type, data) {
+        try {
+            const response = await fetch('/api/data/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: type,
+                    data: data
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to save ${type} data: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || `Failed to save ${type} data`);
+            }
+
+            console.log(`${type} data saved successfully`);
+            return true;
+        } catch (error) {
+            console.error(`Error saving ${type} data:`, error);
+            // Fallback to localStorage if encrypted storage fails
+            this.fallbackToLocalStorage(type, data);
+            return false;
+        }
+    }
+
+    async loadEncryptedData(type) {
+        try {
+            const response = await fetch(`/api/data/load?type=${type}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load ${type} data: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || `Failed to load ${type} data`);
+            }
+
+            console.log(`${type} data loaded successfully`);
+            return result.data;
+        } catch (error) {
+            console.error(`Error loading ${type} data:`, error);
+            // Fallback to localStorage if encrypted storage fails
+            return this.fallbackFromLocalStorage(type);
+        }
+    }
+
+    fallbackToLocalStorage(type, data) {
+        console.warn(`Falling back to localStorage for ${type} data`);
+        try {
+            localStorage.setItem(`blackjack-${type}`, JSON.stringify(data));
+        } catch (error) {
+            console.error(`Failed to save ${type} to localStorage:`, error);
+        }
+    }
+
+    fallbackFromLocalStorage(type) {
+        console.warn(`Loading ${type} data from localStorage fallback`);
+        try {
+            const saved = localStorage.getItem(`blackjack-${type}`);
+            return saved ? JSON.parse(saved) : (type === 'hosts' ? [] : type === 'groups' ? [] : type === 'tags' ? [] : {});
+        } catch (error) {
+            console.error(`Failed to load ${type} from localStorage:`, error);
+            return type === 'hosts' ? [] : type === 'groups' ? [] : type === 'tags' ? [] : {};
+        }
+    }
+
     encryptPassword(password) {
         if (!password) return '';
         // Simple XOR encryption (not secure for production)
@@ -3153,215 +4748,7 @@ class BlackJackApp {
     }
 
 
-    exportHosts() {
-        // Check if any hosts have passwords
-        const hasPasswords = this.hosts.some(host => host.password);
-        
-        if (hasPasswords) {
-            const confirmed = confirm(
-                '⚠️ WARNING: Your configuration contains stored passwords!\n\n' +
-                'Passwords will be exported in encrypted form, but the encryption key is browser-specific.\n' +
-                'This file should be kept in a secure location and only imported on trusted devices.\n\n' +
-                'Do you want to continue with the export?'
-            );
-            if (!confirmed) return;
-        }
-        
-        // Create JSON export
-        const exportData = {
-            version: '1.0',
-            exportDate: new Date().toISOString(),
-            hosts: this.hosts,
-            groups: this.groups,
-            tags: this.tags,
-            integrations: this.integrations,
-            hasPasswords: hasPasswords
-        };
-        
-        // Create and download file
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `blackjack-config-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        alert(`Exported ${this.hosts.length} hosts successfully!`);
-    }
 
-    importHosts() {
-        // Create file input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const importData = JSON.parse(e.target.result);
-                    
-                    if (!importData.hosts || !Array.isArray(importData.hosts)) {
-                        alert('Invalid file format. Please select a valid BlackJack export file.');
-                        return;
-                    }
-                    
-                    // Validate the import data
-                    if (!this.validateImportData(importData)) {
-                        return;
-                    }
-                    
-                    // Check if current config is not empty
-                    const hasExistingData = this.hosts.length > 0 || this.groups.length > 0 || this.tags.length > 0;
-                    
-                    if (hasExistingData) {
-                        // Show merge/overwrite options
-                        const choice = this.showImportOptions(importData);
-                        if (choice === 'cancel') return;
-                        
-                        if (choice === 'overwrite') {
-                            this.performOverwrite(importData);
-                        } else if (choice === 'merge') {
-                            this.performMerge(importData);
-                        }
-                    } else {
-                        // No existing data, just import everything
-                        this.performOverwrite(importData);
-                    }
-                    
-                    this.saveHosts();
-                    this.saveGroups();
-                    this.saveTags();
-                    this.renderHosts();
-                    this.renderTreeView();
-                    
-                } catch (error) {
-                    alert('Error reading file. Please make sure it\'s a valid JSON file.');
-                    console.error('Import error:', error);
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    }
-
-    validateImportData(importData) {
-        // Check if it's a valid BlackJack config file
-        if (!importData.hosts || !Array.isArray(importData.hosts)) {
-            alert('Invalid file format. Please select a valid BlackJack export file.');
-            return false;
-        }
-        
-        // Validate hosts structure
-        for (const host of importData.hosts) {
-            if (!host.name || !host.address || !host.user) {
-                alert('Invalid host data found. Some hosts are missing required fields (name, address, user).');
-                return false;
-            }
-        }
-        
-        // Validate groups if present
-        if (importData.groups && !Array.isArray(importData.groups)) {
-            alert('Invalid groups data in import file.');
-            return false;
-        }
-        
-        // Validate tags if present
-        if (importData.tags && !Array.isArray(importData.tags)) {
-            alert('Invalid tags data in import file.');
-            return false;
-        }
-        
-        return true;
-    }
-
-    showImportOptions(importData) {
-        const hostCount = importData.hosts ? importData.hosts.length : 0;
-        const groupCount = importData.groups ? importData.groups.length : 0;
-        const tagCount = importData.tags ? importData.tags.length : 0;
-        
-        const message = `Import Configuration\n\n` +
-            `Found: ${hostCount} hosts, ${groupCount} groups, ${tagCount} tags\n\n` +
-            `Current: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags\n\n` +
-            `What would you like to do?\n\n` +
-            `• MERGE: Add new items to existing data\n` +
-            `• OVERWRITE: Replace all data with imported data\n` +
-            `• CANCEL: Don't import anything`;
-        
-        const choice = prompt(message + '\n\nEnter: merge, overwrite, or cancel');
-        
-        if (!choice) return 'cancel';
-        
-        const normalizedChoice = choice.toLowerCase().trim();
-        if (['merge', 'overwrite', 'cancel'].includes(normalizedChoice)) {
-            return normalizedChoice;
-        }
-        
-        alert('Invalid choice. Please enter: merge, overwrite, or cancel');
-        return this.showImportOptions(importData);
-    }
-
-    performOverwrite(importData) {
-        this.hosts = importData.hosts || [];
-        this.groups = importData.groups || [];
-        this.tags = importData.tags || [];
-        this.integrations = importData.integrations || { tailscale: false };
-        
-        alert(`Configuration overwritten successfully!\n\n` +
-              `Imported: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags`);
-    }
-
-    performMerge(importData) {
-        let addedHosts = 0;
-        let addedGroups = 0;
-        let addedTags = 0;
-        
-        // Merge hosts (avoid duplicates by name)
-        if (importData.hosts) {
-            for (const host of importData.hosts) {
-                if (!this.hosts.find(h => h.name === host.name)) {
-                    this.hosts.push(host);
-                    addedHosts++;
-                }
-            }
-        }
-        
-        // Merge groups (avoid duplicates by name)
-        if (importData.groups) {
-            for (const group of importData.groups) {
-                if (!this.groups.find(g => g.name === group.name)) {
-                    this.groups.push(group);
-                    addedGroups++;
-                }
-            }
-        }
-        
-        // Merge tags (avoid duplicates by name)
-        if (importData.tags) {
-            for (const tag of importData.tags) {
-                if (!this.tags.find(t => t.name === tag.name)) {
-                    this.tags.push(tag);
-                    addedTags++;
-                }
-            }
-        }
-        
-        // Merge integrations
-        if (importData.integrations) {
-            this.integrations = { ...this.integrations, ...importData.integrations };
-        }
-        
-        alert(`Configuration merged successfully!\n\n` +
-              `Added: ${addedHosts} hosts, ${addedGroups} groups, ${addedTags} tags\n` +
-              `Total: ${this.hosts.length} hosts, ${this.groups.length} groups, ${this.tags.length} tags`);
-    }
 
     showQuickHostMenu() {
         // Create quick host selection modal
@@ -3462,6 +4849,15 @@ class BlackJackApp {
         title.textContent = 'Edit Host';
         form.dataset.editing = hostId;
         document.getElementById('host-submit-btn').textContent = 'Save';
+        
+        // Show Services button for existing hosts
+        const servicesBtn = document.getElementById('host-services-btn');
+        if (servicesBtn) {
+            servicesBtn.style.display = 'inline-block';
+        }
+        
+        // Reset SSH key button to initial state
+        this.resetSSHKeyButton();
         
         document.getElementById('add-host-modal').style.display = 'block';
     }
@@ -3892,7 +5288,7 @@ class BlackJackApp {
                     if (message.type === 'connected') {
                         clearTimeout(timeout);
                         ws.close();
-                        this.updateButtonState('success', 'Enabled', '✅');
+                        this.updateButtonState('success', 'Disabled', '✅');
                         this.showValidationStatus('✅ SSH key authentication successful! Password field will be disabled. If SSH keys fail during connection, password will be used automatically.', 'success');
                         this.disablePasswordField();
                         resolve(true);
@@ -3971,6 +5367,17 @@ class BlackJackApp {
             btn.querySelector('.btn-text').textContent = text;
             btn.querySelector('.btn-icon').textContent = icon;
         }
+    }
+
+    resetSSHKeyButton() {
+        const btn = document.getElementById('ssh-key-test-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.className = 'ssh-key-btn';
+            btn.querySelector('.btn-text').textContent = 'Test SSH Key';
+            btn.querySelector('.btn-icon').textContent = '🔑';
+        }
+        this.hideValidationStatus();
     }
 
     matchesSearch(host, query) {
@@ -4075,6 +5482,11 @@ class BlackJackApp {
 // Initialize the application
 const app = new BlackJackApp();
 
+// Global logout function
+async function logout() {
+    await app.logout();
+}
+
 // Global functions for HTML onclick handlers
 function closeModal(modalId) {
     app.closeModal(modalId);
@@ -4144,7 +5556,25 @@ function clearSearch() {
 }
 
 function showSettings() {
-    app.showSettings();
+    console.log('Opening settings modal...');
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        console.log('Settings modal displayed');
+        
+        // Setup the modal if not already done
+        if (window.app) {
+            window.app.setupSettingsModal();
+        }
+    } else {
+        console.error('Settings modal not found!');
+    }
+}
+
+function saveSettings() {
+    if (window.app) {
+        window.app.saveSettings();
+    }
 }
 
 function showIntegrations() {
