@@ -1,225 +1,270 @@
 # 🚀 BlackJack Release Guide
 
-This guide explains how to push updates to BlackJack and ensure users get notified of new versions.
+This guide explains how to create and manage GitHub releases for BlackJack SSH Client.
 
-## 📋 Pre-Release Checklist
+## 📋 Prerequisites
 
-Before releasing a new version, ensure you have:
+### **Required Tools**
+1. **GitHub CLI** (`gh`) - [Install Guide](https://cli.github.com/)
+2. **Git** - For version control
+3. **Go** - For building the backend
+4. **Build Tools** - For creating installers
 
-- [ ] All features tested and working
-- [ ] No sensitive data in git (credentials, keys, etc.)
-- [ ] Documentation updated if needed
-- [ ] All changes committed to git
-- [ ] Server builds successfully
-
-## 🔄 Release Process
-
-### Step 1: Update Version Numbers
-
-**1.1 Update the VERSION file:**
+### **Authentication**
 ```bash
-# Edit the VERSION file at repo root
+# Authenticate with GitHub CLI
+gh auth login
+
+# Verify authentication
+gh auth status
+```
+
+## 🏷️ Creating a Release
+
+### **Method 1: Automated Script (Recommended)**
+
+```bash
+# Run the automated release script
+./create-release.sh
+```
+
+This script will:
+- ✅ Check prerequisites
+- 🔨 Build all installers
+- 📝 Create release notes
+- 🏷️ Create GitHub release
+- 📤 Upload all files
+
+### **Method 2: Manual Process**
+
+#### **Step 1: Build Installers**
+```bash
+# Build all installers
+./installers/build-installers.sh
+```
+
+#### **Step 2: Create Release Notes**
+```bash
+# Create release notes (or edit manually)
+./create-release.sh  # This will create RELEASE_NOTES.md
+```
+
+#### **Step 3: Create GitHub Release**
+```bash
+# Create the release
+gh release create "v1.0.0" \
+    --title "BlackJack SSH Client v1.0.0" \
+    --notes-file "RELEASE_NOTES.md" \
+    --latest \
+    build/blackjack-ssh-client-1.0.0.deb \
+    build/linux/blackjack-1.0.0-linux.tar.gz \
+    build/linux/install.sh \
+    build/INSTALL.md
+```
+
+## 📦 Release Files
+
+### **What Gets Uploaded**
+- **Windows**: `BlackJack-Setup-1.0.0.exe` (NSIS installer)
+- **Linux DEB**: `blackjack-ssh-client-1.0.0.deb` (Ubuntu/Debian)
+- **Linux RPM**: `blackjack-ssh-client-1.0.0.rpm` (CentOS/RHEL/Fedora)
+- **Linux TAR**: `blackjack-1.0.0-linux.tar.gz` (Generic Linux)
+- **Install Script**: `install.sh` (Universal Linux installer)
+- **Documentation**: `INSTALL.md` (Installation guide)
+
+### **File Locations**
+```
+build/
+├── blackjack-ssh-client-1.0.0.deb
+├── linux/
+│   ├── blackjack-1.0.0-linux.tar.gz
+│   └── install.sh
+└── INSTALL.md
+```
+
+## 🔄 Version Management
+
+### **Updating Version**
+```bash
+# Update version in VERSION file
 echo "1.0.1" > VERSION
+
+# Update version in web-app/version.js
+echo "window.BLACKJACK_VERSION = '1.0.1';" > web-app/version.js
 ```
 
-**1.2 Update web-app/version.js:**
+### **Version Files**
+- `VERSION` - Main version file
+- `web-app/version.js` - Frontend version
+- `installers/windows/blackjack-installer.nsi` - Windows installer version
+- `installers/linux/debian/DEBIAN/control` - Debian package version
+- `installers/linux/rpm/blackjack.spec` - RPM package version
+
+## 📝 Release Notes Template
+
+```markdown
+# BlackJack SSH Client v{VERSION}
+
+## 🚀 What's New
+
+### ✨ Core Features
+- **Real SSH Terminal**: Full xterm.js terminal emulation
+- **SFTP File Browser**: Dual-pane file browser with drag-and-drop
+- **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
+- **Cross-Platform**: Windows, Linux, and macOS support
+
+### 🔐 Security Features
+- **SSH Key Management**: Automatic SSH key detection
+- **Password Fallback**: Automatic fallback to password authentication
+- **Encrypted Sessions**: Secure session management
+- **Access Control**: User authentication and authorization
+
+## 📦 Installation
+
+### Windows
+1. Download `BlackJack-Setup-{VERSION}.exe`
+2. Run as Administrator
+3. Follow the installation wizard
+4. Access at: http://localhost:8082
+
+### Linux
+#### Ubuntu/Debian
 ```bash
-# Edit web-app/version.js to match
-echo 'window.BLACKJACK_VERSION = "1.0.1";' > web-app/version.js
+sudo dpkg -i blackjack-ssh-client-{VERSION}.deb
+sudo systemctl start blackjack
 ```
 
-**1.3 Update cache-busting parameters:**
+#### CentOS/RHEL/Fedora
 ```bash
-# Update the version parameter in web-app/index.html
-# Change: ?v=44&t=1736100000
-# To:     ?v=45&t=1736100000 (increment the number)
+sudo rpm -i blackjack-ssh-client-{VERSION}.rpm
+sudo systemctl start blackjack
 ```
 
-### Step 2: Commit and Push Changes
-
+#### Generic Linux
 ```bash
-# Add all changes
-git add VERSION web-app/version.js web-app/index.html
-
-# Commit with descriptive message
-git commit -m "🚀 Release v1.0.1
-
-✨ New Features:
-- [List new features here]
-
-🐛 Bug Fixes:
-- [List bug fixes here]
-
-🔧 Improvements:
-- [List improvements here]"
-
-# Push to GitHub
-git push origin main
+tar -xzf blackjack-{VERSION}-linux.tar.gz
+cd blackjack-{VERSION}
+sudo ./installers/linux/install.sh
 ```
 
-### Step 3: Verify Release
+## 🎮 Usage
 
-**3.1 Check GitHub VERSION file:**
-```bash
-# Verify the VERSION file is accessible
-curl -s "https://raw.githubusercontent.com/Zmk55/BlackJack/main/VERSION"
-# Should return: 1.0.1
-```
+After installation:
+1. Open http://localhost:8082 in your browser
+2. Create your admin account
+3. Add SSH hosts
+4. Connect and start managing your servers!
 
-**3.2 Test Update Detection:**
-1. Open BlackJack in browser: `http://localhost:8082`
-2. Go to Settings > Application > Updates
-3. Click "Check for Updates"
-4. Should show: "BlackJack v1.0.1 is available (you have v1.0.0). Reload now?"
-
-**3.3 Test Passive Banner:**
-1. Refresh the page
-2. Should see update banner at top: "🔄 New version v1.0.1 available"
-3. Test "Reload" and "Dismiss" buttons
-
-## 🎯 How Users Get Updates
-
-### Automatic Detection
-- **On Page Load**: Users automatically see update banner if newer version available
-- **Banner Actions**: 
-  - "Reload" → Updates to new version with cache-busting
-  - "Dismiss" → Hides banner for current session
-
-### Manual Check
-- **Location**: Settings > Application > Updates
-- **Button**: "Check for Updates"
-- **Feedback**: Shows current status or prompts to update
-
-### Update Process
-1. User clicks "Reload" or confirms update
-2. Page reloads with cache-busting parameters: `?v=1.0.1&t=<timestamp>`
-3. Browser fetches new version files
-4. User sees updated application
-
-## 🔧 Technical Details
-
-### Version Source of Truth
-- **Primary**: `VERSION` file at repo root
-- **GitHub URL**: `https://raw.githubusercontent.com/Zmk55/BlackJack/main/VERSION`
-- **App Version**: `web-app/version.js` (must match VERSION file)
-
-### Cache Busting Strategy
-- **GitHub Requests**: `?_=${Date.now()}` parameter
-- **App Reload**: `?v=<VERSION>&t=<timestamp>` parameters
-- **File Loading**: Version numbers in script/link tags
-
-### Update Detection Logic
-```javascript
-// Semantic version comparison
-cmpSemver(latest, current) > 0  // Returns true if newer version
-
-// Example comparisons:
-// 1.0.0 vs 1.0.1 → true (newer available)
-// 1.0.1 vs 1.0.0 → false (current is newer)
-// 1.0.0 vs 1.0.0 → false (same version)
-```
-
-## 📝 Version Numbering
-
-### Semantic Versioning (SemVer)
-- **Format**: `MAJOR.MINOR.PATCH`
-- **Examples**: `1.0.0`, `1.0.1`, `1.1.0`, `2.0.0`
-
-### When to Increment
-- **PATCH (1.0.0 → 1.0.1)**: Bug fixes, small improvements
-- **MINOR (1.0.0 → 1.1.0)**: New features, enhancements
-- **MAJOR (1.0.0 → 2.0.0)**: Breaking changes, major rewrites
-
-## 🚨 Common Issues & Solutions
-
-### Issue: Update Banner Not Showing
-**Solution**: Check that both VERSION and version.js are updated and pushed to GitHub
-
-### Issue: "You're up to date" When New Version Exists
-**Solution**: Clear browser cache or check GitHub VERSION file accessibility
-
-### Issue: Cache-Busting Not Working
-**Solution**: Increment the version number in index.html script tags
-
-### Issue: Service Worker Conflicts
-**Solution**: The update system handles service workers automatically with `registration.update()`
-
-## 🔍 Testing Checklist
-
-Before each release, test:
-
-- [ ] VERSION file updated and pushed
-- [ ] version.js matches VERSION file
-- [ ] GitHub raw URL returns correct version
-- [ ] Manual update check works
-- [ ] Passive update banner appears
-- [ ] Reload button updates the app
-- [ ] Dismiss button hides banner
-- [ ] Cache-busting parameters work
-- [ ] No console errors
-
-## 📚 Quick Commands
-
-### Check Current Version
-```bash
-# Local VERSION file
-cat VERSION
-
-# GitHub VERSION file
-curl -s "https://raw.githubusercontent.com/Zmk55/BlackJack/main/VERSION"
-
-# App version in browser
-# Open DevTools Console and type: window.BLACKJACK_VERSION
-```
-
-### Force Update Check
-```bash
-# In browser console
-window.manualCheckForUpdates()
-```
-
-### Clear Browser Cache
-```bash
-# Hard refresh in browser
-Ctrl+Shift+R (Linux/Windows)
-Cmd+Shift+R (Mac)
-```
-
-## 🎉 Release Template
-
-Use this template for release commits:
+## 🔧 Command Line
 
 ```bash
-git commit -m "🚀 Release v1.0.1
-
-✨ New Features:
-- Added check for updates functionality
-- Implemented passive update banner
-- Added manual update check in settings
-
-🐛 Bug Fixes:
-- Fixed cache-busting for new files
-- Resolved service worker update conflicts
-
-🔧 Improvements:
-- Enhanced error handling for network issues
-- Improved update banner styling
-- Added semantic version comparison
-
-📋 Testing:
-- Manual update check: ✅
-- Passive update banner: ✅
-- Cache-busting reload: ✅
-- Service worker support: ✅"
+blackjack start    # Start the service
+blackjack stop     # Stop the service
+blackjack status   # Check status
+blackjack logs     # View logs
 ```
 
-## 🔐 Security Notes
+## 📋 System Requirements
 
-- Never commit sensitive files (credentials.enc, master.key, etc.)
-- Always test updates in a safe environment first
-- Verify .gitignore is working correctly
-- Check that no personal data is exposed in commits
+- **OS**: Windows 10+, Ubuntu 18.04+, CentOS 7+, macOS 10.14+
+- **RAM**: 512 MB minimum, 2 GB recommended
+- **Storage**: 100 MB minimum, 500 MB recommended
+- **Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+
+## 🆘 Support
+
+- **GitHub Issues**: [Report bugs and request features](https://github.com/Zmk55/BlackJack/issues)
+- **Documentation**: [Installation Guide](https://github.com/Zmk55/BlackJack/blob/main/INSTALLATION.md)
+- **Discussions**: [GitHub Discussions](https://github.com/Zmk55/BlackJack/discussions)
+
+## 📈 Changelog
+
+### v{VERSION}
+- 🌐 Real SSH terminal with xterm.js
+- 📁 SFTP file browser with drag-and-drop
+- 🔐 Encrypted credential storage
+- 🚀 Cross-platform installers
+- 🏷️ Advanced host management
+- 🔄 Automatic update system
+- 🎨 Modern web interface
+- 🌍 Cross-platform compatibility
 
 ---
 
-**Remember**: The update system is designed to be user-friendly and automatic. Users will see update notifications without any manual intervention, making it easy to keep BlackJack up-to-date! 🎯
+**BlackJack** - Modern SSH Management Made Simple 🚀
+
+*Ready to revolutionize your SSH workflow? Download now and experience the future of SSH management!*
+```
+
+## 🔧 Troubleshooting
+
+### **Common Issues**
+
+#### **GitHub CLI Not Authenticated**
+```bash
+gh auth login
+gh auth status
+```
+
+#### **Build Failures**
+```bash
+# Check if all dependencies are installed
+go version
+dpkg --version
+rpm --version
+
+# Rebuild from scratch
+rm -rf build/
+./installers/build-installers.sh
+```
+
+#### **Release Already Exists**
+```bash
+# Delete existing release
+gh release delete "v1.0.0" --yes
+
+# Create new release
+gh release create "v1.0.0" ...
+```
+
+#### **File Upload Failures**
+```bash
+# Check file sizes and permissions
+ls -la build/
+ls -la build/linux/
+
+# Ensure files exist before creating release
+```
+
+## 📊 Release Statistics
+
+### **File Sizes (Approximate)**
+- **Windows Installer**: ~5 MB
+- **Linux DEB**: ~5 MB
+- **Linux RPM**: ~5 MB
+- **Linux TAR**: ~200 MB (includes all dependencies)
+- **Install Script**: ~10 KB
+- **Documentation**: ~5 KB
+
+### **Total Release Size**: ~220 MB
+
+## 🎯 Best Practices
+
+1. **Test Before Release**: Always test installers on target platforms
+2. **Version Consistency**: Ensure all version files are updated
+3. **Release Notes**: Write comprehensive release notes
+4. **File Verification**: Verify all files are uploaded correctly
+5. **Documentation**: Update documentation with new features
+6. **Announcement**: Announce releases on social media/forums
+
+## 🔗 Useful Links
+
+- **GitHub Releases**: https://github.com/Zmk55/BlackJack/releases
+- **GitHub CLI Docs**: https://cli.github.com/manual/
+- **NSIS Documentation**: https://nsis.sourceforge.io/Docs/
+- **Debian Packaging**: https://www.debian.org/doc/manuals/debian-faq/ch-pkg_basics.en.html
+- **RPM Packaging**: https://rpm-packaging-guide.github.io/
+
+---
+
+**Happy Releasing!** 🚀

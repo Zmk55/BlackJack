@@ -42,37 +42,58 @@ A comprehensive, cross-platform SSH client with web-based terminal, SFTP file br
 
 ## 🚀 Quick Start
 
-### 📦 **Easy Installation**
+### 📥 **Download & Install**
 
-#### **Windows Users**
+#### **🔗 Direct Download Links**
+| Platform | Download | Size | Instructions |
+|----------|----------|------|--------------|
+| **Windows** | [📦 Download Installer](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/BlackJack-Setup-1.0.0.exe) | ~5 MB | Run as Administrator |
+| **Ubuntu/Debian** | [📦 Download .deb](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.deb) | ~5 MB | `sudo dpkg -i blackjack-ssh-client-1.0.0.deb` |
+| **CentOS/RHEL/Fedora** | [📦 Download .rpm](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.rpm) | ~5 MB | `sudo rpm -i blackjack-ssh-client-1.0.0.rpm` |
+| **Generic Linux** | [📦 Download .tar.gz](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-1.0.0-linux.tar.gz) | ~200 MB | Extract and run `sudo ./install.sh` |
+
+#### **⚡ One-Click Installation**
+
+**Windows Users:**
 ```bash
-# Download and run the installer
-BlackJack-Setup-1.0.0.exe
+# Download and run
+curl -L -o BlackJack-Setup.exe https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/BlackJack-Setup-1.0.0.exe
+./BlackJack-Setup.exe
 # Follow the GUI wizard - that's it!
 # Access at: http://localhost:8082
 ```
 
-#### **Linux Users**
+**Linux Users:**
 ```bash
 # Ubuntu/Debian
+wget https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.deb
 sudo dpkg -i blackjack-ssh-client-1.0.0.deb
 sudo systemctl start blackjack
 
 # CentOS/RHEL/Fedora
+wget https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.rpm
 sudo rpm -i blackjack-ssh-client-1.0.0.rpm
 sudo systemctl start blackjack
 
-# Or use the install script
-sudo ./install.sh
+# Generic Linux
+wget https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-1.0.0-linux.tar.gz
+tar -xzf blackjack-1.0.0-linux.tar.gz
+cd blackjack-1.0.0
+sudo ./installers/linux/install.sh
 ```
 
-#### **Command Line Usage**
+#### **🎮 Command Line Usage**
 ```bash
 blackjack start    # Start the service
 blackjack stop     # Stop the service
 blackjack status   # Check status
 blackjack logs     # View logs
 ```
+
+#### **📋 All Downloads**
+- **📥 [Download Page](DOWNLOADS.md)** - Complete download guide
+- **🏷️ [All Releases](https://github.com/Zmk55/BlackJack/releases)** - Browse all versions
+- **📚 [Installation Guide](INSTALLATION.md)** - Detailed setup instructions
 
 ### 🔧 **Development Setup**
 
