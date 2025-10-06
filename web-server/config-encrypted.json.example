@@ -1,0 +1,20 @@
+{
+  "auth": {
+    "username": "",
+    "password": "",
+    "session_duration_hours": 24,
+    "use_encrypted_credentials": true,
+    "encrypted_credentials_file": "credentials.enc",
+    "master_password_file": "master.key"
+  },
+  "security": {
+    "require_https": false,
+    "allowed_ips": [],
+    "max_login_attempts": 5,
+    "lockout_duration_minutes": 15
+  },
+  "server": {
+    "port": "8082",
+    "host": "0.0.0.0"
+  }
+}
