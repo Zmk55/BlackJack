@@ -9,6 +9,13 @@ web-server/*.db
 web-server/*.sqlite
 web-server/*.sqlite3
 
+# User account data - NEVER commit these
+accounts.json
+credentials.enc
+master.key
+data_*
+*.log
+
 # Build artifacts
 web-server/blackjack-server
 web-server/*.exe
@@ -18,7 +25,6 @@ web-server/go.sum
 
 # Temporary files
 *.tmp
-*.log
 *.pid
 
 # OS generated files
