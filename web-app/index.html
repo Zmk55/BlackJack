@@ -10,7 +10,7 @@
     <meta name="expires" content="0">
     <meta name="pragma" content="no-cache">
     <title>BlackJack - SSH Client</title>
-    <link rel="stylesheet" href="styles.css?v=47&t=1736100000">
+    <link rel="stylesheet" href="styles.css?v=49&t=1736102000">
     <!-- xterm.js for terminal emulation -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
@@ -67,19 +67,8 @@
                             </div>
                         </div>
                         <div class="toolbar-right">
-                            <button class="btn" onclick="showSettings()">Settings</button>
-                            <button class="btn btn-danger" onclick="logout()" title="Logout">
-                                <span class="btn-icon">🚪</span> Logout
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Action Toolbar -->
-                    <div class="action-toolbar" id="action-toolbar" style="display: none;">
-                        <div class="toolbar-left">
-                            <span class="selected-count" id="selected-count">0 hosts selected</span>
-                        </div>
-                        <div class="toolbar-right">
+                            <!-- Host Action Buttons (hidden by default) -->
+                            <div class="host-actions" id="host-actions" style="display: none;">
                             <button class="btn btn-primary" id="connect-btn" onclick="app.connectSelectedHosts()" disabled>
                                 <span class="btn-icon">🔗</span> Connect
                             </button>
@@ -93,6 +82,31 @@
                                 <span class="btn-icon">🗑️</span> Delete
                             </button>
                         </div>
+                            
+                            <!-- Hamburger Menu -->
+                            <div class="hamburger-menu">
+                                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleHamburgerMenu()">
+                                    <span class="hamburger-line"></span>
+                                    <span class="hamburger-line"></span>
+                                    <span class="hamburger-line"></span>
+                                </button>
+                                <div class="hamburger-dropdown" id="hamburger-dropdown">
+                                    <button class="hamburger-item" onclick="showSettings()">
+                                        <span class="hamburger-icon">⚙️</span>
+                                        Settings
+                                    </button>
+                                    <button class="hamburger-item hamburger-danger" onclick="logout()">
+                                        <span class="hamburger-icon">🚪</span>
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Selection Info Bar -->
+                    <div class="selection-info" id="selection-info" style="display: none;">
+                        <span class="selected-count" id="selected-count">0 hosts selected</span>
                     </div>
 
                     <!-- Modern Host Grid -->
@@ -185,9 +199,14 @@
                     </div>
                     </div>
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal('add-host-modal')">Cancel</button>
+                        <div class="form-actions-left">
                         <button type="button" class="btn btn-secondary" onclick="app.openHostServices()" id="host-services-btn" style="display: none;">🌐 Manage Services</button>
-                        <button type="submit" class="btn btn-primary" id="host-submit-btn">Add Host</button>
+                        </div>
+                        <div class="form-actions-right">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('add-host-modal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="host-submit-btn">Save</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('add-host-modal')">Close</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -256,7 +275,11 @@
             <div class="settings-body">
                 <div class="settings-sidebar">
                     <div class="settings-nav">
-                        <button class="settings-nav-item active" data-section="application">
+                        <button class="settings-nav-item active" data-section="account">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Account</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="application">
                             <span class="nav-icon">🎨</span>
                             <span class="nav-text">Application</span>
                         </button>
@@ -280,7 +303,82 @@
                 </div>
                 
                 <div class="settings-content">
-                    <div class="settings-section active" id="settings-application">
+                    <div class="settings-section active" id="settings-account">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">👤 Account Management</h4>
+                            <p class="section-description">Manage your account credentials and profile</p>
+                        </div>
+                        
+                        <div class="settings-cards">
+                            <!-- User Profile Card -->
+                            <div class="settings-card profile-card">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <span class="card-icon">👤</span>
+                                        User Profile
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="profile-info">
+                                        <div class="profile-avatar">
+                                            <span class="avatar-text" id="profile-initials">U</span>
+                                        </div>
+                                        <div class="profile-details">
+                                            <h3 class="profile-name" id="profile-username">User</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Password Management Card -->
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <span class="card-icon">🔐</span>
+                                        Password Management
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="password-section">
+                                        <div class="section-description">
+                                            <p>Keep your account secure by regularly updating your password. Use a strong password with at least 6 characters.</p>
+                                        </div>
+                                        
+                                        <form id="change-password-form" class="password-form">
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label class="form-label" for="current-password">Current Password</label>
+                                                    <input type="password" id="current-password" class="form-input" placeholder="Enter your current password" required>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label class="form-label" for="new-password">New Password</label>
+                                                    <input type="password" id="new-password" class="form-input" placeholder="Enter your new password" required minlength="6">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="form-label" for="confirm-new-password">Confirm New Password</label>
+                                                    <input type="password" id="confirm-new-password" class="form-input" placeholder="Confirm your new password" required minlength="6">
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-actions">
+                                                <button type="button" class="btn btn-secondary" onclick="clearPasswordForm()">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <span class="btn-icon">🔐</span>
+                                                    Update Password
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section" id="settings-application">
                         <div class="settings-section-header">
                             <h4 class="section-title">🎨 Application Settings</h4>
                             <p class="section-description">Customize the look and feel of your application</p>
@@ -521,7 +619,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('integrations-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="saveIntegrations()">Save</button>
+                <button class="btn btn-primary" id="integrations-save-btn" onclick="saveIntegrations()">Save</button>
             </div>
         </div>
     </div>
@@ -893,17 +991,17 @@
                 // User is authenticated, load the main app
                 // Load version.js first
                 const versionScript = document.createElement('script');
-                versionScript.src = 'version.js?v=47&t=1736100000';
+                versionScript.src = 'version.js?v=49&t=1736102000';
                 document.body.appendChild(versionScript);
                 
                 // Load update.js
                 const updateScript = document.createElement('script');
-                updateScript.src = 'update.js?v=47&t=1736100000';
+                updateScript.src = 'update.js?v=49&t=1736102000';
                 document.body.appendChild(updateScript);
                 
                 // Then load app.js
                 const script = document.createElement('script');
-                script.src = 'app.js?v=47&t=1736100000';
+                script.src = 'app.js?v=49&t=1736102000';
                 document.body.appendChild(script);
             } catch (error) {
                 // Network error, redirect to login
@@ -911,5 +1009,8 @@
             }
         });
     </script>
+
+    <!-- Notification System -->
+    <div id="notification-container" class="notification-container"></div>
 </body>
 </html>

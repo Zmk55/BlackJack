@@ -1,0 +1,151 @@
+name: Build Windows Executable
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+        
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Build Windows executable
+      run: |
+        # Create build directory
+        mkdir -p build/windows
+        
+        # Navigate to web-server directory
+        cd web-server
+        
+        # Install dependencies
+        go mod tidy
+        
+        # Build the executable
+        go build -ldflags "-X main.Version=${{ steps.version.outputs.version }} -s -w" -o ../build/windows/blackjack-server.exe main.go
+        
+        # Go back to root
+        cd ..
+        
+    - name: Copy web application files
+      run: |
+        # Copy web-app files
+        xcopy /E /I /Y web-app build\windows\web-app
+        
+        # Copy configuration files
+        if exist web-server\config.json copy /Y web-server\config.json build\windows\
+        if exist web-server\config-encrypted.json.example copy /Y web-server\config-encrypted.json.example build\windows\
+        
+    - name: Create startup script
+      run: |
+        echo @echo off > build\windows\start-blackjack.bat
+        echo echo Starting BlackJack SSH Client... >> build\windows\start-blackjack.bat
+        echo echo. >> build\windows\start-blackjack.bat
+        echo echo Web Interface: http://localhost:8082 >> build\windows\start-blackjack.bat
+        echo echo Press Ctrl+C to stop the server >> build\windows\start-blackjack.bat
+        echo echo. >> build\windows\start-blackjack.bat
+        echo blackjack-server.exe >> build\windows\start-blackjack.bat
+        
+    - name: Create Windows README
+      run: |
+        echo BlackJack SSH Client - Windows Build > build\windows\README.txt
+        echo ==================================== >> build\windows\README.txt
+        echo. >> build\windows\README.txt
+        echo Version: ${{ steps.version.outputs.version }} >> build\windows\README.txt
+        echo Build Date: %date% %time% >> build\windows\README.txt
+        echo. >> build\windows\README.txt
+        echo Quick Start: >> build\windows\README.txt
+        echo 1. Double-click 'start-blackjack.bat' to start the server >> build\windows\README.txt
+        echo 2. Open your browser and go to http://localhost:8082 >> build\windows\README.txt
+        echo 3. Use the web interface to manage your SSH connections >> build\windows\README.txt
+        echo. >> build\windows\README.txt
+        echo Files: >> build\windows\README.txt
+        echo - blackjack-server.exe: Main server executable >> build\windows\README.txt
+        echo - web-app/: Web interface files >> build\windows\README.txt
+        echo - config.json: Server configuration (optional) >> build\windows\README.txt
+        echo - start-blackjack.bat: Startup script >> build\windows\README.txt
+        echo. >> build\windows\README.txt
+        echo For more information, visit: https://github.com/Zmk55/BlackJack >> build\windows\README.txt
+        
+    - name: Create distribution package
+      run: |
+        # Create zip file
+        powershell -command "Compress-Archive -Path 'build\windows\*' -DestinationPath 'blackjack-windows-${{ steps.version.outputs.version }}.zip'"
+        
+    - name: Upload Windows build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: blackjack-windows-${{ steps.version.outputs.version }}
+        path: |
+          build/windows/
+          blackjack-windows-${{ steps.version.outputs.version }}.zip
+          
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          blackjack-windows-${{ steps.version.outputs.version }}.zip
+        body: |
+          ## BlackJack SSH Client v${{ steps.version.outputs.version }} - Windows
+          
+          ### 🚀 Quick Start
+          1. Download `blackjack-windows-${{ steps.version.outputs.version }}.zip`
+          2. Extract the zip file
+          3. Double-click `start-blackjack.bat` to start the server
+          4. Open your browser and go to http://localhost:8082
+          
+          ### ✨ Features
+          - **Real SSH Terminal**: Full xterm.js terminal emulation with actual SSH protocol
+          - **SFTP File Browser**: Dual-pane file browser with drag-and-drop transfers
+          - **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
+          - **Advanced Host Management**: Hierarchical groups, smart tags, and search
+          - **Modern UI**: Responsive design with dark theme and smooth animations
+          - **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
+          
+          ### 📋 System Requirements
+          - **OS**: Windows 10 or later
+          - **RAM**: 512 MB minimum, 2 GB recommended
+          - **Storage**: 100 MB
+          - **Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+          
+          ### 🔧 Installation
+          This is a portable application - no installation required! Just extract and run.
+          
+          ### 📚 Documentation
+          - [Installation Guide](https://github.com/Zmk55/BlackJack/blob/main/INSTALLATION.md)
+          - [Quick Start Guide](https://github.com/Zmk55/BlackJack/blob/main/QUICK_START.md)
+          - [GitHub Repository](https://github.com/Zmk55/BlackJack)
+          
+          ### 🆘 Support
+          - [GitHub Issues](https://github.com/Zmk55/BlackJack/issues)
+          - [GitHub Discussions](https://github.com/Zmk55/BlackJack/discussions)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

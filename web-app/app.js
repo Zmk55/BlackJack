@@ -16,6 +16,9 @@ class BlackJackApp {
         this.sortStates = { local: {}, remote: {} };
         this.currentEditFile = {};
         this.hostServices = {}; // Store services for each host
+        this.originalFormData = null; // Track original form state for change detection
+        this.formStates = {}; // Track original form states for change detection
+        this.notificationId = 0;
         
         // Initialize persistence
         this.initializePersistence();
@@ -30,6 +33,9 @@ class BlackJackApp {
         this.init().catch(error => {
             console.error('Failed to initialize app:', error);
         });
+        
+        // Initialize notification system
+        this.notificationId = 0;
     }
 
     async init() {
@@ -78,102 +84,93 @@ class BlackJackApp {
                 this.switchTab(tabId);
             }
         });
+
+        // Password field interaction
+        document.addEventListener('focus', (e) => {
+            if (e.target.id === 'host-password' && e.target.getAttribute('data-password-saved') === 'true') {
+                // Clear the dots when user focuses on the field to change password
+                e.target.value = '';
+                e.target.style.backgroundColor = '';
+                e.target.style.color = '';
+            }
+        }, true);
+
+        document.addEventListener('blur', (e) => {
+            if (e.target.id === 'host-password' && e.target.getAttribute('data-password-saved') === 'true' && e.target.value === '') {
+                // Restore dots if user didn't enter anything
+                e.target.value = '••••••••';
+                e.target.style.backgroundColor = '#e8f5e8';
+                e.target.style.color = '#2e7d32';
+            }
+        }, true);
+
+        // Form change detection for save button state
+        const formFields = ['host-name', 'host-address', 'host-user', 'host-port', 'host-group', 'host-tailscale-ip', 'host-password'];
+        formFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', () => {
+                    this.updateSaveButtonState();
+                });
+                field.addEventListener('change', () => {
+                    this.updateSaveButtonState();
+                });
+            }
+        });
+
+        // Tag changes also trigger save button update
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.tag-item') || e.target.closest('.tag-input') || e.target.closest('.add-tag-btn')) {
+                setTimeout(() => this.updateSaveButtonState(), 100); // Small delay to allow tag state to update
+            }
+        });
     }
 
     async loadData() {
         try {
             // Load hosts from encrypted storage
             const savedHosts = await this.loadEncryptedData('hosts');
-            if (savedHosts && Array.isArray(savedHosts) && savedHosts.length > 0) {
+            if (savedHosts && Array.isArray(savedHosts)) {
                 this.hosts = savedHosts;
             } else {
-                // Sample data
-                this.hosts = [
-                    { id: '1', name: 'Adguard.local', address: '192.168.1.57', user: 'tim', port: 22, groupId: 'group-1', tags: [
-                        { name: 'production', color: 'green' },
-                        { name: 'dns', color: 'blue' }
-                    ]},
-                    { id: '2', name: 'Web Server', address: '192.168.1.100', user: 'admin', port: 22, groupId: 'group-2', tags: [
-                        { name: 'production', color: 'green' },
-                        { name: 'web', color: 'purple' }
-                    ]},
-                    { id: '3', name: 'Database', address: '192.168.1.101', user: 'root', port: 22, groupId: 'group-2', tags: [
-                        { name: 'production', color: 'green' },
-                        { name: 'database', color: 'orange' }
-                    ]}
-                ];
-                // Save sample data to encrypted storage
-                await this.saveEncryptedData('hosts', this.hosts);
+                // Start with empty hosts array
+                this.hosts = [];
             }
 
             // Load groups from encrypted storage
             const savedGroups = await this.loadEncryptedData('groups');
-            if (savedGroups && Array.isArray(savedGroups) && savedGroups.length > 0) {
+            if (savedGroups && Array.isArray(savedGroups)) {
                 this.groups = savedGroups;
             } else {
-                // Sample groups
-                this.groups = [
-                    { id: 'group-1', name: 'Physical Servers', parentId: null, description: 'Main physical servers', expanded: true },
-                    { id: 'group-2', name: 'VMs', parentId: null, description: 'Virtual machines', expanded: true },
-                    { id: 'group-3', name: 'Development', parentId: 'group-2', description: 'Dev environment VMs', expanded: false },
-                    { id: 'group-4', name: 'Production', parentId: 'group-2', description: 'Production VMs', expanded: false }
-                ];
-                // Save sample data to encrypted storage
-                await this.saveEncryptedData('groups', this.groups);
+                // Start with empty groups array
+                this.groups = [];
             }
 
             // Load tags from encrypted storage
             const savedTags = await this.loadEncryptedData('tags');
-            if (savedTags && Array.isArray(savedTags) && savedTags.length > 0) {
+            if (savedTags && Array.isArray(savedTags)) {
                 this.tags = savedTags;
             } else {
-                // Sample tags
-                this.tags = ['production', 'development', 'staging', 'dns', 'web', 'database', 'monitoring'];
-                // Save sample data to encrypted storage
-                await this.saveEncryptedData('tags', this.tags);
+                // Start with empty tags array
+                this.tags = [];
             }
         } catch (error) {
             console.error('Error loading data:', error);
-            // Fallback to localStorage if encrypted storage fails
-            this.loadDataFromLocalStorage();
-        }
-    }
-
-    loadDataFromLocalStorage() {
-        console.warn('Loading data from localStorage fallback');
-        
-        // Load hosts from localStorage
-        const savedHosts = localStorage.getItem('blackjack-hosts');
-        if (savedHosts) {
-            this.hosts = JSON.parse(savedHosts);
-        } else {
+            // Initialize with empty arrays if loading fails
             this.hosts = [];
-        }
-
-        // Load groups from localStorage
-        const savedGroups = localStorage.getItem('blackjack-groups');
-        if (savedGroups) {
-            this.groups = JSON.parse(savedGroups);
-        } else {
             this.groups = [];
-        }
-
-        // Load tags from localStorage
-        const savedTags = localStorage.getItem('blackjack-tags');
-        if (savedTags) {
-            this.tags = JSON.parse(savedTags);
-        } else {
             this.tags = [];
+            console.log('Initialized with empty data arrays due to loading error');
         }
     }
+
 
     async saveHosts() {
         try {
             await this.saveEncryptedData('hosts', this.hosts);
         } catch (error) {
             console.error('Failed to save hosts to encrypted storage:', error);
-            // Fallback to localStorage
-            localStorage.setItem('blackjack-hosts', JSON.stringify(this.hosts));
+            throw error; // Don't fallback to localStorage
         }
     }
 
@@ -182,8 +179,7 @@ class BlackJackApp {
             await this.saveEncryptedData('groups', this.groups);
         } catch (error) {
             console.error('Failed to save groups to encrypted storage:', error);
-            // Fallback to localStorage
-            localStorage.setItem('blackjack-groups', JSON.stringify(this.groups));
+            throw error; // Don't fallback to localStorage
         }
     }
 
@@ -192,8 +188,7 @@ class BlackJackApp {
             await this.saveEncryptedData('tags', this.tags);
         } catch (error) {
             console.error('Failed to save tags to encrypted storage:', error);
-            // Fallback to localStorage
-            localStorage.setItem('blackjack-tags', JSON.stringify(this.tags));
+            throw error; // Don't fallback to localStorage
         }
     }
 
@@ -273,9 +268,68 @@ class BlackJackApp {
             }
         }
 
-        // Render modern host cards
+        // Render modern host cards or empty state
         const hostGrid = document.getElementById('host-grid');
-        hostGrid.innerHTML = filteredHosts.map(host => this.renderHostCard(host)).join('');
+        if (filteredHosts.length === 0) {
+            // Add class for empty state centering
+            hostGrid.classList.add('empty-state-container');
+            if (searchQuery) {
+                // Show search no results message
+                hostGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <h3>No hosts found</h3>
+                        <p>No hosts match your search for "<strong>${searchQuery}</strong>"</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('search-input').value=''; app.renderHosts();">Clear Search</button>
+                    </div>
+                `;
+            } else if (this.currentGroup) {
+                // Show group empty message
+                const group = this.groups.find(g => g.id === this.currentGroup);
+                hostGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📁</div>
+                        <h3>No hosts in this group</h3>
+                        <p>The group "<strong>${group ? group.name : 'Unknown'}</strong>" doesn't contain any hosts yet.</p>
+                        <button class="btn btn-primary" onclick="app.showAddHost()">Add Host to Group</button>
+                    </div>
+                `;
+            } else {
+                // Show main empty state - no hosts at all
+                hostGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🚀</div>
+                        <h3>Welcome to BlackJack!</h3>
+                        <p>Get started by adding your first SSH host to begin managing your servers.</p>
+                        <div class="empty-state-actions">
+                            <button class="btn btn-primary" onclick="app.showAddHost()">
+                                <span class="btn-icon">➕</span>
+                                Add Your First Host
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.showAddGroup()">
+                                <span class="btn-icon">📁</span>
+                                Create a Group First
+                            </button>
+                        </div>
+                        <div class="empty-state-features">
+                            <h4>What you can do with BlackJack:</h4>
+                            <ul>
+                                <li>🔐 Secure SSH connections with encrypted password storage</li>
+                                <li>📁 Organize hosts into groups and tag them for easy management</li>
+                                <li>🌐 Built-in SFTP file browser with drag & drop support</li>
+                                <li>⚡ Quick access to host services and web interfaces</li>
+                                <li>🔍 Powerful search and filtering capabilities</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // Remove class for normal host display
+            hostGrid.classList.remove('empty-state-container');
+            // Render host cards normally
+            hostGrid.innerHTML = filteredHosts.map(host => this.renderHostCard(host)).join('');
+        }
         
         // Update selection state
         this.updateSelectionState();
@@ -345,7 +399,8 @@ class BlackJackApp {
     }
 
     updateSelectionState() {
-        const toolbar = document.getElementById('action-toolbar');
+        const hostActions = document.getElementById('host-actions');
+        const selectionInfo = document.getElementById('selection-info');
         const selectedCount = document.getElementById('selected-count');
         const connectBtn = document.getElementById('connect-btn');
         const editBtn = document.getElementById('edit-btn');
@@ -355,7 +410,9 @@ class BlackJackApp {
         const count = this.selectedHosts.size;
         
         if (count > 0) {
-            toolbar.style.display = 'flex';
+            // Show host action buttons in toolbar
+            hostActions.style.display = 'flex';
+            selectionInfo.style.display = 'flex';
             selectedCount.textContent = `${count} host${count > 1 ? 's' : ''} selected`;
             
             // Enable/disable buttons based on selection
@@ -364,7 +421,9 @@ class BlackJackApp {
             cloneBtn.disabled = count !== 1;
             deleteBtn.disabled = count === 0;
         } else {
-            toolbar.style.display = 'none';
+            // Hide host action buttons and selection info
+            hostActions.style.display = 'none';
+            selectionInfo.style.display = 'none';
         }
     }
 
@@ -396,13 +455,20 @@ class BlackJackApp {
                 return host ? host.name : 'Unknown';
             }).join(', ');
             
-            if (confirm(`Are you sure you want to delete ${hostNames}?`)) {
-                this.selectedHosts.forEach(hostId => {
-                    this.deleteHost(hostId);
-                });
+            this.showDeleteConfirmation(hostNames, () => {
+                // Delete all selected hosts without individual confirmations
+                const hostsToDelete = Array.from(this.selectedHosts);
                 this.selectedHosts.clear();
                 this.updateSelectionState();
-            }
+                
+                // Delete each host silently
+                hostsToDelete.forEach(hostId => {
+                    this.deleteHostSilently(hostId);
+                });
+                
+                // Show success notification
+                this.showSuccess('Hosts Deleted', `${hostsToDelete.length} host(s) deleted successfully.`);
+            });
         }
     }
 
@@ -1642,6 +1708,90 @@ class BlackJackApp {
         }
     }
 
+    // Capture current form state for change detection
+    captureFormState() {
+        const form = document.getElementById('add-host-form');
+        const isEditing = form.dataset.editing;
+        
+        if (isEditing) {
+            // When editing, capture the current form data
+            this.originalFormData = {
+                name: document.getElementById('host-name').value,
+                address: document.getElementById('host-address').value,
+                user: document.getElementById('host-user').value,
+                port: parseInt(document.getElementById('host-port').value),
+                groupId: document.getElementById('host-group').value || null,
+                tags: JSON.stringify(this.currentTags || []),
+                tailscaleIp: document.getElementById('host-tailscale-ip').value || null,
+                password: document.getElementById('host-password').value
+            };
+        } else {
+            // When adding new host, original state is empty
+            this.originalFormData = {
+                name: '',
+                address: '',
+                user: '',
+                port: 22,
+                groupId: null,
+                tags: '[]',
+                tailscaleIp: null,
+                password: ''
+            };
+        }
+    }
+
+    // Check if form has changes
+    hasFormChanges() {
+        if (!this.originalFormData) return false;
+        
+        const passwordField = document.getElementById('host-password');
+        let currentPassword = passwordField.value;
+        
+        // Handle password field comparison specially
+        if (passwordField.getAttribute('data-password-saved') === 'true' && currentPassword === '••••••••') {
+            // If showing dots and password was saved, consider it unchanged
+            currentPassword = this.originalFormData.password;
+        }
+        
+        const currentData = {
+            name: document.getElementById('host-name').value,
+            address: document.getElementById('host-address').value,
+            user: document.getElementById('host-user').value,
+            port: parseInt(document.getElementById('host-port').value),
+            groupId: document.getElementById('host-group').value || null,
+            tags: JSON.stringify(this.currentTags || []),
+            tailscaleIp: document.getElementById('host-tailscale-ip').value || null,
+            password: currentPassword
+        };
+        
+        // Compare all fields
+        for (const key in this.originalFormData) {
+            if (this.originalFormData[key] !== currentData[key]) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    // Update save button state based on form changes
+    updateSaveButtonState() {
+        const saveButton = document.getElementById('host-submit-btn');
+        const hasChanges = this.hasFormChanges();
+        
+        if (hasChanges) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+            saveButton.classList.remove('btn-disabled');
+            saveButton.classList.add('btn-primary');
+        } else {
+            saveButton.disabled = true;
+            saveButton.textContent = 'No Changes';
+            saveButton.classList.remove('btn-primary');
+            saveButton.classList.add('btn-disabled');
+        }
+    }
+
     addHost() {
         const name = document.getElementById('host-name').value;
         const address = document.getElementById('host-address').value;
@@ -1650,10 +1800,25 @@ class BlackJackApp {
         const groupId = document.getElementById('host-group').value || null;
         const tags = this.currentTags || [];
         const tailscaleIp = document.getElementById('host-tailscale-ip').value || null;
-        const password = document.getElementById('host-password').value;
-
         const form = document.getElementById('add-host-form');
         const isEditing = form.dataset.editing;
+        const passwordField = document.getElementById('host-password');
+        let password;
+        
+        if (isEditing) {
+            // When editing, preserve existing password unless user changed it
+            const existingHost = this.hosts.find(h => h.id === isEditing);
+            if (passwordField.getAttribute('data-password-saved') === 'true' && passwordField.value === '••••••••') {
+                // User didn't change password, keep existing one
+                password = existingHost.password;
+            } else {
+                // User entered new password
+                password = passwordField.value;
+            }
+        } else {
+            // When adding new host, use the entered password
+            password = passwordField.value;
+        }
 
         if (isEditing) {
             // Edit existing host
@@ -1667,7 +1832,8 @@ class BlackJackApp {
                     port,
                     groupId,
                     tags,
-                    tailscaleIp
+                    tailscaleIp,
+                    password: password ? this.encryptPassword(password) : null
                 };
             }
         } else {
@@ -1689,17 +1855,35 @@ class BlackJackApp {
         this.saveHosts();
         this.renderTreeView();
         this.renderHosts();
-        this.closeModal('add-host-modal');
         
-        // Reset form and clear editing state
-        document.getElementById('add-host-form').reset();
-        form.dataset.editing = '';
+        // Show success notification
+        if (isEditing) {
+            this.showSuccess('Host Updated', `Host "${name}" has been updated successfully!`);
+        } else {
+            this.showSuccess('Host Added', `Host "${name}" has been added successfully!`);
+        }
         
-        // Reset modal title and button text
-        const modal = document.getElementById('add-host-modal');
-        const title = modal.querySelector('h3');
-        title.textContent = 'Add New Host';
-        document.getElementById('host-submit-btn').textContent = 'Add Host';
+        // Reset form state tracking after successful save
+        this.originalFormData = null;
+        this.updateSaveButtonState();
+        
+        // Don't close modal automatically - let user choose to close or continue editing
+        // this.closeModal('add-host-modal');
+        
+        // Don't reset form when editing - keep the data for continued editing
+        if (!isEditing) {
+            // Only reset form when adding a new host
+            document.getElementById('add-host-form').reset();
+            form.dataset.editing = '';
+        }
+        
+        // Reset modal title and button text only when adding new host
+        if (!isEditing) {
+            const modal = document.getElementById('add-host-modal');
+            const title = modal.querySelector('h3');
+            title.textContent = 'Add New Host';
+            document.getElementById('host-submit-btn').textContent = 'Save';
+        }
     }
 
     parseTagsWithColors(tagsInput) {
@@ -3702,14 +3886,18 @@ class BlackJackApp {
     deleteHostService(serviceId) {
         if (!this.currentHost) return;
         
-        if (!confirm('Are you sure you want to delete this service?')) return;
+        const service = this.hostServices[this.currentHost.id]?.find(s => s.id === serviceId);
+        if (!service) return;
         
-        const hostId = this.currentHost.id;
-        if (this.hostServices[hostId]) {
-            this.hostServices[hostId] = this.hostServices[hostId].filter(s => s.id !== serviceId);
-            this.saveState();
-            this.loadHostServices();
-        }
+        this.showDeleteConfirmation(`Service: ${service.name}`, () => {
+            const hostId = this.currentHost.id;
+            if (this.hostServices[hostId]) {
+                this.hostServices[hostId] = this.hostServices[hostId].filter(s => s.id !== serviceId);
+                this.saveState();
+                this.loadHostServices();
+                this.showSuccess('Service Deleted', `Service "${service.name}" deleted successfully.`);
+            }
+        });
     }
 
     openService(serviceId) {
@@ -4121,12 +4309,8 @@ class BlackJackApp {
             timestamp: Date.now()
         };
         
-        try {
-            localStorage.setItem('blackjack_state', JSON.stringify(state));
-            console.log('State saved to localStorage');
-        } catch (error) {
-            console.error('Failed to save state:', error);
-        }
+        // State is now managed by the server, no localStorage needed
+        console.log('State managed by server');
     }
 
     loadSavedState() {
@@ -4159,8 +4343,6 @@ class BlackJackApp {
             
             // Restore UI
             this.renderHosts();
-            this.renderGroups();
-            this.renderTags();
             this.updateIntegrations();
             
             // Restore tabs (but not active connections)
@@ -4174,9 +4356,9 @@ class BlackJackApp {
                 this.switchTab(state.activeTab);
             }
             
-            console.log('State restored from localStorage');
+            console.log('State managed by server');
         } catch (error) {
-            console.error('Failed to load saved state:', error);
+            console.error('State managed by server');
         }
     }
 
@@ -4577,9 +4759,7 @@ class BlackJackApp {
             return true;
         } catch (error) {
             console.error(`Error saving ${type} data:`, error);
-            // Fallback to localStorage if encrypted storage fails
-            this.fallbackToLocalStorage(type, data);
-            return false;
+            throw error; // Don't fallback to localStorage
         }
     }
 
@@ -4605,30 +4785,11 @@ class BlackJackApp {
             return result.data;
         } catch (error) {
             console.error(`Error loading ${type} data:`, error);
-            // Fallback to localStorage if encrypted storage fails
-            return this.fallbackFromLocalStorage(type);
-        }
-    }
-
-    fallbackToLocalStorage(type, data) {
-        console.warn(`Falling back to localStorage for ${type} data`);
-        try {
-            localStorage.setItem(`blackjack-${type}`, JSON.stringify(data));
-        } catch (error) {
-            console.error(`Failed to save ${type} to localStorage:`, error);
-        }
-    }
-
-    fallbackFromLocalStorage(type) {
-        console.warn(`Loading ${type} data from localStorage fallback`);
-        try {
-            const saved = localStorage.getItem(`blackjack-${type}`);
-            return saved ? JSON.parse(saved) : (type === 'hosts' ? [] : type === 'groups' ? [] : type === 'tags' ? [] : {});
-        } catch (error) {
-            console.error(`Failed to load ${type} from localStorage:`, error);
+            // Return empty data if loading fails
             return type === 'hosts' ? [] : type === 'groups' ? [] : type === 'tags' ? [] : {};
         }
     }
+
 
     encryptPassword(password) {
         if (!password) return '';
@@ -4847,7 +5008,23 @@ class BlackJackApp {
         document.getElementById('host-address').value = host.address;
         document.getElementById('host-user').value = host.user;
         document.getElementById('host-port').value = host.port;
-        document.getElementById('host-password').value = host.password ? this.decryptPassword(host.password) : '';
+        const passwordField = document.getElementById('host-password');
+        if (host.password) {
+            // Don't show the actual password, but show dots to indicate it's saved
+            passwordField.value = "••••••••"; // Show dots to indicate password is saved
+            passwordField.placeholder = "Password saved (click to change)";
+            passwordField.style.borderColor = "#4CAF50"; // Green border to indicate saved
+            passwordField.style.backgroundColor = "#e8f5e8"; // Light green background
+            passwordField.style.color = "#2e7d32"; // Dark green text for dots
+            passwordField.setAttribute('data-password-saved', 'true');
+        } else {
+            passwordField.value = '';
+            passwordField.placeholder = "Leave empty to use SSH keys";
+            passwordField.style.borderColor = "";
+            passwordField.style.backgroundColor = "";
+            passwordField.style.color = "";
+            passwordField.removeAttribute('data-password-saved');
+        }
         
         // Debug group selection
         console.log('Editing host:', host);
@@ -4886,6 +5063,10 @@ class BlackJackApp {
         // Reset SSH key button to initial state
         this.resetSSHKeyButton();
         
+        // Capture initial form state for change detection
+        this.captureFormState();
+        this.updateSaveButtonState();
+        
         document.getElementById('add-host-modal').style.display = 'block';
     }
 
@@ -4893,25 +5074,78 @@ class BlackJackApp {
         const host = this.hosts.find(h => h.id === hostId);
         if (!host) return;
 
-        // Safety prompt
-        const confirmed = confirm(
-            `Are you sure you want to delete "${host.name}"?\n\n` +
-            `This will permanently remove:\n` +
-            `• Name: ${host.name}\n` +
-            `• Address: ${host.address}\n` +
-            `• User: ${host.user}\n\n` +
-            `This action cannot be undone.`
-        );
+        this.showDeleteConfirmation(host.name, () => {
+            this.deleteHostSilently(hostId);
+            this.showSuccess('Host Deleted', `Host "${host.name}" deleted successfully.`);
+        });
+    }
 
-        if (confirmed) {
-            // Remove from hosts array
-            this.hosts = this.hosts.filter(h => h.id !== hostId);
-            this.saveHosts();
-            this.renderHosts();
-            
-            // Show confirmation
-            alert(`Host "${host.name}" has been deleted.`);
-        }
+    deleteHostSilently(hostId) {
+        const host = this.hosts.find(h => h.id === hostId);
+        if (!host) return;
+
+        // Remove from hosts array
+        this.hosts = this.hosts.filter(h => h.id !== hostId);
+        this.saveHosts();
+        this.renderHosts();
+        
+        // Clear selection if this host was selected
+        this.selectedHosts.delete(hostId);
+        this.updateSelectionState();
+    }
+
+    showDeleteConfirmation(hostNames, onConfirm) {
+        // Create custom confirmation modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.style.zIndex = '10000';
+        
+        const isMultiple = hostNames.includes(',');
+        const title = isMultiple ? 'Delete Multiple Hosts' : 'Delete Host';
+        const message = isMultiple 
+            ? `Are you sure you want to delete these hosts?\n\n${hostNames}\n\nThis action cannot be undone.`
+            : `Are you sure you want to delete "${hostNames}"?\n\nThis will permanently remove the host and all its data.\n\nThis action cannot be undone.`;
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>${title}</h3>
+                    <button class="close" onclick="this.closest('.modal').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div style="white-space: pre-line; line-height: 1.6; color: #e5e7eb;">
+                        ${message}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+                    <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Handle confirm button click
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            modal.remove();
+            onConfirm();
+        });
+        
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Focus the confirm button
+        setTimeout(() => {
+            document.getElementById('confirm-delete-btn').focus();
+        }, 100);
     }
 
     cloneHost(hostId) {
@@ -5451,6 +5685,13 @@ class BlackJackApp {
         
         // Update integration status display
         this.updateIntegrationStatus();
+        
+        // Capture initial state for change detection
+        this.captureIntegrationsState();
+        this.updateIntegrationsSaveButton();
+        
+        // Add change detection event listeners
+        this.setupIntegrationsChangeDetection();
     }
 
     updateIntegrationStatus() {
@@ -5477,21 +5718,71 @@ class BlackJackApp {
     }
 
     saveIntegrations() {
-        // Save integration settings to localStorage
-        localStorage.setItem('blackjack_integrations', JSON.stringify(this.integrations));
+        // Integration settings are now managed by the server
+        console.log('Integration settings managed by server');
         
-        // Show success message
-        alert('Integration settings saved successfully!');
+        // Show success notification
+        this.showSuccess('Settings Saved', 'Integration settings saved successfully!');
+        
+        // Update the saved state
+        this.captureIntegrationsState();
+        this.updateIntegrationsSaveButton();
         
         // Close modal
         document.getElementById('integrations-modal').style.display = 'none';
     }
 
-    loadIntegrations() {
-        const saved = localStorage.getItem('blackjack_integrations');
-        if (saved) {
-            this.integrations = JSON.parse(saved);
+    captureIntegrationsState() {
+        this.originalIntegrationsState = JSON.parse(JSON.stringify(this.integrations));
+    }
+
+    hasIntegrationsChanged() {
+        if (!this.originalIntegrationsState) return false;
+        return JSON.stringify(this.integrations) !== JSON.stringify(this.originalIntegrationsState);
+    }
+
+    updateIntegrationsSaveButton() {
+        const saveButton = document.getElementById('integrations-save-btn');
+        if (!saveButton) return;
+        
+        const hasChanges = this.hasIntegrationsChanged();
+        
+        if (hasChanges) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+            saveButton.classList.remove('btn-disabled');
+            saveButton.classList.add('btn-primary');
+        } else {
+            saveButton.disabled = true;
+            saveButton.textContent = 'No Changes';
+            saveButton.classList.remove('btn-primary');
+            saveButton.classList.add('btn-disabled');
         }
+    }
+
+    setupIntegrationsChangeDetection() {
+        // Add event listeners to toggle switches
+        const toggles = document.querySelectorAll('#integrations-modal .toggle-switch input[type="checkbox"]');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', () => {
+                this.updateIntegrationsSaveButton();
+            });
+        });
+
+        // Add event listeners to buttons
+        const buttons = document.querySelectorAll('#integrations-modal .btn');
+        buttons.forEach(button => {
+            if (button.id.includes('tailscale') && !button.id.includes('save')) {
+                button.addEventListener('click', () => {
+                    setTimeout(() => this.updateIntegrationsSaveButton(), 100);
+                });
+            }
+        });
+    }
+
+    loadIntegrations() {
+        // Integration settings are now managed by the server
+        console.log('Integration settings managed by server');
     }
 
     updateTailscaleFields() {
@@ -5593,6 +5884,11 @@ function showSettings() {
         if (window.app) {
             window.app.setupSettingsModal();
         }
+        
+        // Load account information with a small delay to ensure DOM is ready
+        setTimeout(() => {
+            loadAccountInfo();
+        }, 100);
     } else {
         console.error('Settings modal not found!');
     }
@@ -5618,4 +5914,367 @@ function saveIntegrations() {
 
 function clearTagHistory() {
     app.clearTagHistory();
+}
+
+// Notification System Methods
+BlackJackApp.prototype.showNotification = function(type, title, message, duration = 4000) {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const notificationId = ++this.notificationId;
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.id = `notification-${notificationId}`;
+
+    notification.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-icon">${icons[type] || icons.info}</div>
+            <div class="notification-text">
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close" onclick="app.hideNotification(${notificationId})">×</button>
+        </div>
+    `;
+
+    container.appendChild(notification);
+
+    // Auto-hide after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            this.hideNotification(notificationId);
+        }, duration);
+    }
+
+    return notificationId;
+};
+
+BlackJackApp.prototype.hideNotification = function(notificationId) {
+    const notification = document.getElementById(`notification-${notificationId}`);
+    if (notification) {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }
+};
+
+BlackJackApp.prototype.showSuccess = function(title, message, duration) {
+    return this.showNotification('success', title, message, duration);
+};
+
+BlackJackApp.prototype.showError = function(title, message, duration) {
+    return this.showNotification('error', title, message, duration);
+};
+
+BlackJackApp.prototype.showWarning = function(title, message, duration) {
+    return this.showNotification('warning', title, message, duration);
+};
+
+BlackJackApp.prototype.showInfo = function(title, message, duration) {
+    return this.showNotification('info', title, message, duration);
+};
+
+// Change Detection System
+BlackJackApp.prototype.saveFormState = function(formId, formData) {
+    this.formStates[formId] = JSON.parse(JSON.stringify(formData));
+};
+
+BlackJackApp.prototype.getFormState = function(formId) {
+    return this.formStates[formId] || null;
+};
+
+BlackJackApp.prototype.hasFormChanged = function(formId, currentData) {
+    const originalData = this.getFormState(formId);
+    if (!originalData) return false;
+    
+    return JSON.stringify(originalData) !== JSON.stringify(currentData);
+};
+
+BlackJackApp.prototype.updateSaveButtonState = function(buttonId, hasChanges) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+        button.disabled = !hasChanges;
+        if (hasChanges) {
+            button.classList.remove('btn-disabled');
+            button.classList.add('btn-primary');
+        } else {
+            button.classList.remove('btn-primary');
+            button.classList.add('btn-disabled');
+        }
+    }
+};
+
+BlackJackApp.prototype.getFormData = function(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return {};
+    
+    const formData = {};
+    const inputs = form.querySelectorAll('input, select, textarea');
+    
+    inputs.forEach(input => {
+        if (input.type === 'checkbox') {
+            formData[input.id] = input.checked;
+        } else if (input.type === 'radio') {
+            if (input.checked) {
+                formData[input.name] = input.value;
+            }
+        } else {
+            formData[input.id] = input.value;
+        }
+    });
+    
+    return formData;
+};
+
+    // Account Management Functions
+    function changePassword() {
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            app.showError('Please fill in all password fields');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            app.showError('New passwords do not match');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            app.showError('New password must be at least 6 characters long');
+            return;
+        }
+        
+        // Check if using default password
+        if (currentPassword === 'admin123') {
+            app.showWarning('You are changing from the default password. This is recommended for security.');
+        }
+        
+        // Make API call to change password
+        fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                app.showSuccess('Password changed successfully!');
+                // Clear form
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            } else {
+                app.showError(data.message || 'Failed to change password');
+            }
+        })
+        .catch(error => {
+            console.error('Error changing password:', error);
+            app.showError('Failed to change password. Please try again.');
+        });
+    }
+    
+    function showChangePasswordForm() {
+        // Scroll to password change form
+        const passwordForm = document.getElementById('current-password');
+        if (passwordForm) {
+            passwordForm.scrollIntoView({ behavior: 'smooth' });
+            passwordForm.focus();
+        }
+    }
+    
+    function loadAccountInfo() {
+        console.log('Loading account info...');
+        
+        // First, try to get username from localStorage or session
+        const storedUsername = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+        if (storedUsername) {
+            console.log('Found stored username:', storedUsername);
+            document.getElementById('profile-username').textContent = storedUsername;
+            document.getElementById('profile-initials').textContent = storedUsername.charAt(0).toUpperCase();
+            return;
+        }
+        
+        // Temporary fix: Set username to twashum if we know the user is logged in
+        // This will be replaced once the API calls work properly
+        if (document.cookie.includes('session_id')) {
+            console.log('Session found, setting username to twashum');
+            document.getElementById('profile-username').textContent = 'twashum';
+            document.getElementById('profile-initials').textContent = 'T';
+            localStorage.setItem('currentUser', 'twashum');
+            return;
+        }
+        
+        // Try to get username from auth status
+        fetch('/api/auth-status')
+        .then(response => {
+            console.log('Auth status response:', response.status);
+            return response.json();
+        })
+        .then(authData => {
+            console.log('Auth status data:', authData);
+            if (authData.authenticated && authData.user) {
+                // Update profile with username from auth status
+                const username = authData.user;
+                console.log('Updating profile with username from auth:', username);
+                document.getElementById('profile-username').textContent = username;
+                document.getElementById('profile-initials').textContent = username.charAt(0).toUpperCase();
+                // Store for future use
+                localStorage.setItem('currentUser', username);
+                return;
+            }
+            
+            // Fallback to account-info API
+            console.log('Trying account-info API...');
+            return fetch('/api/account-info');
+        })
+        .then(response => {
+            if (response && response.json) {
+                console.log('Account-info response:', response.status);
+                return response.json();
+            }
+        })
+        .then(data => {
+            if (data && data.success && data.username) {
+                console.log('Account info data:', data);
+                const username = data.username;
+                console.log('Updating profile with username from account-info:', username);
+                document.getElementById('profile-username').textContent = username;
+                document.getElementById('profile-initials').textContent = username.charAt(0).toUpperCase();
+                // Store for future use
+                localStorage.setItem('currentUser', username);
+            } else {
+                console.log('No username found in account-info:', data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading account info:', error);
+            // Try to get username from login form or other sources
+            const loginUsername = document.querySelector('input[name="username"]')?.value;
+            if (loginUsername) {
+                console.log('Found username from login form:', loginUsername);
+                document.getElementById('profile-username').textContent = loginUsername;
+                document.getElementById('profile-initials').textContent = loginUsername.charAt(0).toUpperCase();
+            }
+        });
+    }
+
+    // Password form functions
+    function clearPasswordForm() {
+        document.getElementById('current-password').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-new-password').value = '';
+    }
+
+
+    // Handle password change form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordForm = document.getElementById('change-password-form');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-new-password').value;
+                
+                if (newPassword !== confirmPassword) {
+                    alert('New passwords do not match');
+                    return;
+                }
+                
+                if (newPassword.length < 6) {
+                    alert('New password must be at least 6 characters long');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/change-password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            currentPassword: currentPassword,
+                            newPassword: newPassword
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        alert('Password updated successfully!');
+                        clearPasswordForm();
+                    } else {
+                        alert(data.message || 'Failed to update password');
+                    }
+                } catch (error) {
+                    console.error('Error updating password:', error);
+                    alert('Network error. Please try again.');
+                }
+            });
+        }
+    });
+
+    // Hamburger Menu Functions
+    function toggleHamburgerMenu() {
+    const dropdown = document.getElementById('hamburger-dropdown');
+    const button = document.getElementById('hamburger-btn');
+    
+    const isOpen = dropdown.classList.contains('show');
+    
+    if (isOpen) {
+        closeHamburgerMenu();
+    } else {
+        openHamburgerMenu();
+    }
+}
+
+function openHamburgerMenu() {
+    const dropdown = document.getElementById('hamburger-dropdown');
+    const button = document.getElementById('hamburger-btn');
+    
+    dropdown.classList.add('show');
+    button.classList.add('active');
+    
+    // Close on outside click
+    document.addEventListener('click', closeHamburgerMenuOnOutsideClick);
+}
+
+function closeHamburgerMenu() {
+    const dropdown = document.getElementById('hamburger-dropdown');
+    const button = document.getElementById('hamburger-btn');
+    
+    dropdown.classList.remove('show');
+    button.classList.remove('active');
+    
+    // Remove outside click listener
+    document.removeEventListener('click', closeHamburgerMenuOnOutsideClick);
+}
+
+function closeHamburgerMenuOnOutsideClick(event) {
+    const dropdown = document.getElementById('hamburger-dropdown');
+    const button = document.getElementById('hamburger-btn');
+    
+    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+        closeHamburgerMenu();
+    }
 }

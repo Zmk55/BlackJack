@@ -83,6 +83,30 @@ web-server-clean:
 	@echo "Cleaning web server build artifacts..."
 	cd web-server && rm -f blackjack-server
 
+# Windows build targets
+build-windows:
+	@echo "Building BlackJack for Windows..."
+	@if [ -f "dev/build-windows.bat" ]; then \
+		./dev/build-windows.bat; \
+	else \
+		echo "Windows build script not found. Please run on Windows or use GitHub Actions."; \
+	fi
+
+build-windows-go:
+	@echo "Building Windows executable with Go..."
+	@mkdir -p build/windows
+	cd web-server && go build -ldflags "-X main.Version=$(VERSION) -s -w" -o ../build/windows/blackjack-server.exe main.go
+	@echo "Windows executable built: build/windows/blackjack-server.exe"
+
+# Release targets
+release:
+	@echo "Creating GitHub release..."
+	./create-release.sh
+
+release-windows:
+	@echo "Building and releasing Windows version..."
+	./create-release.sh
+
 # Unified startup script
 start:
 	@echo "Starting BlackJack with unified script..."
@@ -118,6 +142,14 @@ help:
 	@echo "  web-server   - Start web server (development)"
 	@echo "  web-server-build - Build web server binary"
 	@echo "  web-server-clean - Clean web server artifacts"
+	@echo ""
+	@echo "Windows Build targets:"
+	@echo "  build-windows - Build Windows executable (requires Windows)"
+	@echo "  build-windows-go - Build Windows executable with Go"
+	@echo ""
+	@echo "Release targets:"
+	@echo "  release      - Create GitHub release with Windows executable"
+	@echo "  release-windows - Build and release Windows version"
 	@echo ""
 	@echo "Unified startup:"
 	@echo "  start        - Start with unified script (interactive)"

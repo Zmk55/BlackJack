@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="cache-control" content="no-cache">
+    <meta name="expires" content="0">
+    <meta name="pragma" content="no-cache">
+    <title>BlackJack - SSH Client</title>
+    <link rel="stylesheet" href="styles.css?v=47&t=1736100000">
+    <!-- xterm.js for terminal emulation -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+</head>
+<body>
+    <!-- Update Banner -->
+    <div id="update-banner" style="display:none"></div>
+    
+    <div id="app">
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tabs">
+                <div class="tab active" data-tab="main">
+                    <span class="tab-title">BlackJack</span>
+                </div>
+                <button class="new-tab-btn" onclick="createNewTab()">+</button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-area">
+            <!-- Main Tab Content -->
+            <div id="main-tab" class="tab-content active">
+                <div class="sidebar" id="sidebar">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">
+                            <h3>Organization</h3>
+                            <button class="btn btn-collapse" onclick="toggleSidebar()" title="Collapse Sidebar">◀</button>
+                        </div>
+                        <div class="sidebar-actions">
+                            <button class="btn btn-primary" onclick="showAddGroup()">+ Group</button>
+                            <button class="btn btn-primary" onclick="showAddHost()">+ Host</button>
+                        </div>
+                    </div>
+                    <div class="sidebar-content">
+                        <div class="tree-view" id="tree-view">
+                            <!-- Groups and hosts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="main-content">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <button class="btn btn-primary" onclick="showAllHosts()" id="view-all-btn">View All Hosts</button>
+                            <span class="filter-info" id="filter-info">Showing all hosts</span>
+                        </div>
+                        <div class="toolbar-center">
+                            <div class="search-container">
+                                <input type="text" id="search-input" placeholder="Search hosts, groups, or tags..." class="search-input">
+                                <button class="btn btn-secondary" onclick="clearSearch()" id="clear-search-btn" style="display: none;">Clear</button>
+                            </div>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn" onclick="showSettings()">Settings</button>
+                            <button class="btn btn-danger" onclick="logout()" title="Logout">
+                                <span class="btn-icon">🚪</span> Logout
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Toolbar -->
+                    <div class="action-toolbar" id="action-toolbar" style="display: none;">
+                        <div class="toolbar-left">
+                            <span class="selected-count" id="selected-count">0 hosts selected</span>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn btn-primary" id="connect-btn" onclick="app.connectSelectedHosts()" disabled>
+                                <span class="btn-icon">🔗</span> Connect
+                            </button>
+                            <button class="btn btn-edit" id="edit-btn" onclick="app.editSelectedHost()" disabled>
+                                <span class="btn-icon">✏️</span> Edit
+                            </button>
+                            <button class="btn btn-clone" id="clone-btn" onclick="app.cloneSelectedHost()" disabled>
+                                <span class="btn-icon">📋</span> Clone
+                            </button>
+                            <button class="btn btn-danger" id="delete-btn" onclick="app.deleteSelectedHosts()" disabled>
+                                <span class="btn-icon">🗑️</span> Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modern Host Grid -->
+                    <div class="host-grid" id="host-grid">
+                        <!-- Host cards will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-host-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Host</h3>
+                <button class="close" onclick="closeModal('add-host-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-host-form">
+                    <div class="form-content">
+                        <div class="form-group">
+                            <label for="host-name">Name:</label>
+                            <input type="text" id="host-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="host-address">Address:</label>
+                            <input type="text" id="host-address" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="host-user">User:</label>
+                            <input type="text" id="host-user" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="host-port">Port:</label>
+                            <input type="number" id="host-port" value="22">
+                        </div>
+                        <div class="form-group">
+                            <label for="host-password">Password (Optional):</label>
+                            <input type="password" id="host-password" placeholder="Leave empty to use SSH keys">
+                            <small class="form-help">Password will be encrypted and stored securely. Leave empty to use SSH key authentication.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>SSH Key Authentication:</label>
+                            <button type="button" id="ssh-key-test-btn" class="ssh-key-btn">
+                                <span class="btn-text">Test SSH Key</span>
+                                <span class="btn-icon">🔑</span>
+                            </button>
+                            <small class="form-help">Click to test SSH key authentication. If successful, password field will be disabled. If SSH keys fail, password will be used automatically.</small>
+                            <div id="ssh-validation-status" class="validation-status" style="display: none;"></div>
+                        </div>
+                        <div class="form-group" id="tailscale-ip-group" style="display: none;">
+                            <label for="host-tailscale-ip">Tailscale IP:</label>
+                            <input type="text" id="host-tailscale-ip" placeholder="100.x.x.x">
+                            <small class="form-help">Enter the Tailscale IP address for this host</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="host-group">Group:</label>
+                            <select id="host-group">
+                                <option value="">No Group</option>
+                            </select>
+                        </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="host-tags">Tags:</label>
+                        <div class="tag-management">
+                            <div class="tag-input-row">
+                                <div class="tag-input-container">
+                                    <input type="text" id="tag-name-input" placeholder="Enter tag name" autocomplete="off">
+                                    <div class="tag-dropdown" id="tag-dropdown">
+                                        <!-- Tag history will be populated here -->
+                                    </div>
+                                </div>
+                                <div class="color-palette">
+                                    <button type="button" class="color-btn tag-red selected" data-color="red" title="Red"></button>
+                                    <button type="button" class="color-btn tag-blue" data-color="blue" title="Blue"></button>
+                                    <button type="button" class="color-btn tag-green" data-color="green" title="Green"></button>
+                                    <button type="button" class="color-btn tag-yellow" data-color="yellow" title="Yellow"></button>
+                                    <button type="button" class="color-btn tag-purple" data-color="purple" title="Purple"></button>
+                                    <button type="button" class="color-btn tag-orange" data-color="orange" title="Orange"></button>
+                                    <button type="button" class="color-btn tag-pink" data-color="pink" title="Pink"></button>
+                                    <button type="button" class="color-btn tag-cyan" data-color="cyan" title="Cyan"></button>
+                                    <button type="button" class="color-btn tag-gray" data-color="gray" title="Gray"></button>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="add-tag-btn">+</button>
+                            </div>
+                            <div class="tag-list" id="tag-list">
+                                <!-- Tags will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('add-host-modal')">Cancel</button>
+                        <button type="button" class="btn btn-secondary" onclick="app.openHostServices()" id="host-services-btn" style="display: none;">🌐 Manage Services</button>
+                        <button type="submit" class="btn btn-primary" id="host-submit-btn">Add Host</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="connection-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect to Host</h3>
+                <button class="close" onclick="closeModal('connection-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="connection-options">
+                    <button class="btn btn-primary" onclick="connectSSH()">SSH Shell</button>
+                    <button class="btn btn-primary" onclick="connectSSHCommand()">SSH Command</button>
+                    <button class="btn btn-primary" onclick="connectSFTP()">SFTP Browser</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Group Modal -->
+    <div id="add-group-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Group</h3>
+                <button class="close" onclick="closeModal('add-group-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-group-form">
+                    <div class="form-group">
+                        <label for="group-name">Group Name:</label>
+                        <input type="text" id="group-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="parent-group">Parent Group:</label>
+                        <select id="parent-group">
+                            <option value="">None (Root Group)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="group-description">Description:</label>
+                        <textarea id="group-description" rows="3"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('add-group-modal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="group-submit-btn">Add Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content settings-modal-content">
+            <div class="modal-header settings-header">
+                <div class="settings-header-content">
+                    <h3 class="settings-title">⚙️ Settings</h3>
+                    <p class="settings-subtitle">Configure your BlackJack application preferences</p>
+                </div>
+                <button class="close settings-close" onclick="closeModal('settings-modal')">×</button>
+            </div>
+            
+            <div class="settings-body">
+                <div class="settings-sidebar">
+                    <div class="settings-nav">
+                        <button class="settings-nav-item active" data-section="application">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Application</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="security">
+                            <span class="nav-icon">🔒</span>
+                            <span class="nav-text">Security</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="data">
+                            <span class="nav-icon">💾</span>
+                            <span class="nav-text">Data Management</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="backup">
+                            <span class="nav-icon">📦</span>
+                            <span class="nav-text">Backup & Restore</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="integrations">
+                            <span class="nav-icon">🔌</span>
+                            <span class="nav-text">Integrations</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="settings-content">
+                    <div class="settings-section active" id="settings-application">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">🎨 Application Settings</h4>
+                            <p class="section-description">Customize the look and feel of your application</p>
+                        </div>
+                        
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🎨</div>
+                                    <div class="card-title">Theme & Appearance</div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-group">
+                                        <label class="setting-label">Color Theme</label>
+                                        <div class="theme-selector">
+                                            <div class="theme-option active" data-theme="dark">
+                                                <div class="theme-preview dark-preview"></div>
+                                                <span>Dark</span>
+                                            </div>
+                                            <div class="theme-option" data-theme="light">
+                                                <div class="theme-preview light-preview"></div>
+                                                <span>Light</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-group">
+                                        <label class="setting-label">Auto-save</label>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="auto-save" checked>
+                                            <label for="auto-save" class="toggle-label">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <small class="setting-help">Automatically save changes as you work</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🔄</div>
+                                    <div class="card-title">Updates</div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="setting-description">Check for application updates and manage version information.</p>
+                                    <div class="setting-group">
+                                        <button id="check-updates-btn" class="btn btn-primary btn-modern" type="button" onclick="window.manualCheckForUpdates && window.manualCheckForUpdates()">
+                                            <span class="btn-icon">🔄</span>
+                                            Check for Updates
+                                        </button>
+                                        <div id="update-status" class="update-status-container"></div>
+                                        <small class="setting-help">Manually check for new versions of BlackJack</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section" id="settings-security">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">🔒 Security Settings</h4>
+                            <p class="section-description">Configure security and authentication preferences</p>
+                        </div>
+                        
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">⏰</div>
+                                    <div class="card-title">Session Management</div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-group">
+                                        <label class="setting-label">Session Timeout</label>
+                                        <div class="input-group">
+                                            <input type="number" class="modern-input" value="30" min="5" max="1440">
+                                            <span class="input-suffix">minutes</span>
+                                        </div>
+                                        <small class="setting-help">How long to keep you logged in (5-1440 minutes)</small>
+                                    </div>
+                                    
+                                    <div class="setting-group">
+                                        <label class="setting-label">Require Password for Connections</label>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="require-password">
+                                            <label for="require-password" class="toggle-label">
+                            <span class="toggle-slider"></span>
+                        </label>
+                                        </div>
+                                        <small class="setting-help">Always prompt for password when connecting to hosts</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section" id="settings-data">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">💾 Data Management</h4>
+                            <p class="section-description">Manage your application data and storage</p>
+                        </div>
+                        
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🏷️</div>
+                                    <div class="card-title">Tag Management</div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-group">
+                                        <label class="setting-label">Clear Tag History</label>
+                                        <p class="setting-description">Remove all tag history and reset tag suggestions to default state.</p>
+                                        <button class="btn btn-danger btn-modern" onclick="clearTagHistory()">
+                                            <span class="btn-icon">🗑️</span>
+                                            Clear All Tags
+                                        </button>
+                                        <small class="setting-help">This action cannot be undone. All custom tags will be removed.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section" id="settings-backup">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">📦 Backup & Restore</h4>
+                            <p class="section-description">Backup your data and restore from previous backups</p>
+                        </div>
+                        
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">💾</div>
+                                    <div class="card-title">Full Database Backup</div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="setting-description">Export all hosts, groups, tags, and settings to an encrypted backup file.</p>
+                                    <div class="backup-actions">
+                                        <button class="btn btn-primary btn-modern" onclick="app.exportFullDatabase()">
+                                            <span class="btn-icon">💾</span>
+                                            Export Full Database
+                                        </button>
+                                        <button class="btn btn-secondary btn-modern" onclick="app.showImportDatabaseModal()">
+                                            <span class="btn-icon">📥</span>
+                                            Import Database
+                                        </button>
+                                    </div>
+                                    <small class="setting-help">Full backups include all your data in an encrypted format</small>
+                    </div>
+                </div>
+
+                                    <div class="settings-card">
+                                        <div class="card-header">
+                                            <div class="card-icon">📤</div>
+                                            <div class="card-title">Individual Host Export</div>
+                                        </div>
+                                        <div class="card-content">
+                                            <p class="setting-description">Export specific hosts to a JSON file or import hosts from a backup file.</p>
+                                            <div class="backup-actions">
+                                                <button class="btn btn-primary btn-modern" onclick="app.showHostExportModal()">
+                                                    <span class="btn-icon">📤</span>
+                                                    Export Hosts
+                                                </button>
+                                                <button class="btn btn-secondary btn-modern" onclick="app.importHosts()">
+                                                    <span class="btn-icon">📥</span>
+                                                    Import Hosts
+                                                </button>
+                                            </div>
+                                            <small class="setting-help">Choose which hosts to export from the selection modal</small>
+                                        </div>
+                                    </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section" id="settings-integrations">
+                        <div class="settings-section-header">
+                            <h4 class="section-title">🔌 Integrations</h4>
+                            <p class="section-description">Connect with external services and tools</p>
+                </div>
+
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🔌</div>
+                                    <div class="card-title">Available Integrations</div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="setting-description">Manage integrations with external services like Tailscale.</p>
+                                    <button class="btn btn-primary btn-modern" onclick="showIntegrations()">
+                                        <span class="btn-icon">⚙️</span>
+                                        Manage Integrations
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-footer">
+                <div class="footer-actions">
+                    <button class="btn btn-secondary btn-modern" onclick="closeModal('settings-modal')">
+                        <span class="btn-icon">❌</span>
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary btn-modern" onclick="saveSettings()">
+                        <span class="btn-icon">💾</span>
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integrations Modal -->
+    <div id="integrations-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Integrations</h3>
+                <button class="close" onclick="closeModal('integrations-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="integration-item">
+                    <div class="integration-header">
+                        <div class="integration-info">
+                            <h4>Tailscale</h4>
+                            <p>Connect to your Tailscale network devices</p>
+                        </div>
+                        <div class="integration-status">
+                            <span class="status-badge" id="tailscale-status">Disabled</span>
+                        </div>
+                    </div>
+                    <div class="integration-controls">
+                        <button class="btn btn-secondary" id="tailscale-disable-btn" onclick="toggleTailscale(false)" disabled>Disable</button>
+                        <button class="btn btn-primary" id="tailscale-enable-btn" onclick="toggleTailscale(true)">Enable</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('integrations-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveIntegrations()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host Services Modal -->
+    <div id="host-services-modal" class="host-services-modal" style="display: none;">
+        <div class="host-services-content">
+            <div class="host-services-header">
+                <h3 class="host-services-title">Manage Host Services</h3>
+                <button class="host-services-close" onclick="app.closeHostServicesModal()">×</button>
+            </div>
+            <div class="host-services-info">
+                <p><span class="host-services-info-icon">🖥️</span><strong>Host:</strong> <span id="host-services-name">Loading...</span></p>
+                <p><span class="host-services-info-icon">🌐</span><strong>Address:</strong> <span id="host-services-address">Loading...</span></p>
+            </div>
+            <div class="host-services-body">
+                <div class="host-services-toolbar">
+                    <button class="host-services-btn host-services-btn-primary" onclick="app.showAddServiceForm()">
+                        ➕ Add Service
+                    </button>
+                    <div class="host-services-search">
+                        <input type="text" id="services-search" placeholder="Search services..." class="form-input" />
+                    </div>
+                </div>
+                <div class="host-services-list" id="host-services-list">
+                    <!-- Services will be populated here -->
+                </div>
+            </div>
+            <div class="host-services-footer">
+                <div class="host-services-actions">
+                    <button class="host-services-btn host-services-btn-secondary" onclick="app.closeHostServicesModal()">Close</button>
+                </div>
+                <div class="host-services-shortcuts">
+                    <div class="host-services-shortcut">
+                        <span>Add Service:</span>
+                        <span class="host-services-shortcut-key">+</span>
+                    </div>
+                    <div class="host-services-shortcut">
+                        <span>Open Service:</span>
+                        <span class="host-services-shortcut-key">Click</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Form Modal -->
+    <div id="service-form-modal" class="service-form-modal" style="display: none;">
+        <div class="service-form-content">
+            <div class="service-form-header">
+                <h3 class="service-form-title" id="service-form-title">Add New Service</h3>
+                <button class="service-form-close" onclick="app.closeServiceForm()">×</button>
+            </div>
+            <div class="service-form-body">
+                <form id="service-form">
+                    <div class="service-form-grid">
+                        <div class="form-group">
+                            <label for="service-name">Service Name *</label>
+                            <input type="text" id="service-name" class="form-input" placeholder="e.g., Web Dashboard" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="service-type">Service Type *</label>
+                            <select id="service-type" class="form-input" required>
+                                <option value="web">🌐 Web</option>
+                                <option value="api">⚡ API</option>
+                                <option value="database">🗄️ Database</option>
+                                <option value="ssh">🔐 SSH</option>
+                                <option value="ftp">📁 FTP</option>
+                                <option value="other">🔧 Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="service-host">Host/IP Address *</label>
+                            <input type="text" id="service-host" class="form-input" placeholder="192.168.1.100" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="service-port">Port</label>
+                            <input type="number" id="service-port" class="form-input" placeholder="80" min="1" max="65535" />
+                        </div>
+                        <div class="form-group">
+                            <label for="service-path">Path</label>
+                            <input type="text" id="service-path" class="form-input" placeholder="/dashboard" />
+                        </div>
+                        <div class="form-group">
+                            <label for="service-protocol">Protocol</label>
+                            <select id="service-protocol" class="form-input">
+                                <option value="http">HTTP</option>
+                                <option value="https">HTTPS</option>
+                                <option value="ssh">SSH</option>
+                                <option value="ftp">FTP</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="service-description">Description</label>
+                            <textarea id="service-description" class="form-input" rows="3" placeholder="Optional description of this service..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="service-form-footer">
+                <div class="service-form-actions">
+                    <button class="service-form-btn service-form-btn-secondary" onclick="app.closeServiceForm()">Cancel</button>
+                    <button class="service-form-btn service-form-btn-primary" onclick="app.saveService()">Save Service</button>
+                </div>
+                <div class="service-form-preview">
+                    <div class="service-form-preview-label">Preview URL:</div>
+                    <div class="service-form-preview-url" id="service-preview-url">http://192.168.1.100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Hosts Modal -->
+    <div id="import-hosts-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Import Hosts</h3>
+                <button class="close" onclick="app.closeImportHostsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-section">
+                    <h4>📁 Select Backup File</h4>
+                    <div class="file-upload-area" id="host-file-upload">
+                        <div class="file-upload-content">
+                            <div class="file-upload-icon">📄</div>
+                            <p>Drag and drop a backup file here, or click to browse</p>
+                            <input type="file" id="host-file-input" accept=".json,.enc" style="display: none;">
+                            <button class="btn btn-primary" onclick="document.getElementById('host-file-input').click()">
+                                Choose File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="host-preview-section" style="display: none;">
+                    <h4>👀 Preview Hosts</h4>
+                    <div class="import-preview">
+                        <div class="import-preview-header">
+                            <span>Found <span id="host-count">0</span> hosts to import</span>
+                            <div class="import-actions">
+                                <button class="btn btn-secondary" onclick="app.selectAllHosts()">Select All</button>
+                                <button class="btn btn-secondary" onclick="app.deselectAllHosts()">Deselect All</button>
+                            </div>
+                        </div>
+                        <div class="import-preview-list" id="host-preview-list">
+                            <!-- Host preview items will be added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="host-group-assignment" style="display: none;">
+                    <h4>📂 Group Assignment</h4>
+                    <div class="group-assignment-info">
+                        <p>Assign imported hosts to groups. Leave blank to keep original groups or assign to root.</p>
+                    </div>
+                    <div class="group-assignment-controls">
+                        <label for="default-group-select">Default Group for All Hosts:</label>
+                        <select id="default-group-select">
+                            <option value="">Keep Original Groups</option>
+                            <option value="root">Root Directory</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="host-conflict-resolution" style="display: none;">
+                    <h4>⚠️ Conflict Resolution</h4>
+                    <div class="conflict-resolution-options">
+                        <label>
+                            <input type="radio" name="host-conflict-mode" value="skip" checked>
+                            Skip existing hosts (keep current data)
+                        </label>
+                        <label>
+                            <input type="radio" name="host-conflict-mode" value="overwrite">
+                            Overwrite existing hosts (replace with imported data)
+                        </label>
+                        <label>
+                            <input type="radio" name="host-conflict-mode" value="merge">
+                            Merge hosts (combine data, prefer imported values)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeImportHostsModal()">Cancel</button>
+                <button class="btn btn-primary" id="import-hosts-btn" onclick="app.executeHostImport()" disabled>
+                    Import Selected Hosts
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Hosts Modal -->
+    <div id="export-hosts-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Export Hosts</h3>
+                <button class="close" onclick="app.closeExportHostsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-warning">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <h4>Security Warning</h4>
+                        <p>Individual host exports are saved as <strong>unencrypted JSON files</strong>. These files contain sensitive information like host addresses, usernames, and connection details.</p>
+                        <p><strong>Please ensure you:</strong></p>
+                        <ul>
+                            <li>Store the exported file in a secure location</li>
+                            <li>Delete the file after importing if no longer needed</li>
+                            <li>Never share these files with unauthorized parties</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="export-section">
+                    <h4>📋 Select Hosts to Export</h4>
+                    <div class="export-controls">
+                        <button class="btn btn-secondary" onclick="app.selectAllExportHosts()">Select All</button>
+                        <button class="btn btn-secondary" onclick="app.deselectAllExportHosts()">Deselect All</button>
+                        <span class="export-count" id="export-count">0 hosts selected</span>
+                    </div>
+                    <div class="export-host-list" id="export-host-list">
+                        <!-- Host selection items will be added here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeExportHostsModal()">Cancel</button>
+                <button class="btn btn-primary" id="export-selected-btn" onclick="app.executeHostExport()" disabled>
+                    Export Selected Hosts
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Database Modal -->
+    <div id="import-database-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>Import Database</h3>
+                <button class="close" onclick="app.closeImportDatabaseModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-warning">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <h4>Full Database Import</h4>
+                        <p>This will import a complete encrypted backup file containing all hosts, groups, tags, and settings.</p>
+                        <p><strong>This action will replace ALL your current data!</strong></p>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="file-selection-section">
+                    <h4>📁 Select Backup File</h4>
+                    <div class="file-upload-area" id="database-file-upload">
+                        <div class="file-upload-content">
+                            <div class="file-upload-icon">🔐</div>
+                            <p>Drag and drop an encrypted backup file here, or click to browse</p>
+                            <input type="file" id="database-file-input" accept=".enc" style="display: none;">
+                            <button class="btn btn-primary" onclick="document.getElementById('database-file-input').click()">
+                                Choose File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="comparison-section" style="display: none;">
+                    <h4>🔍 Data Comparison</h4>
+                    <div class="comparison-grid">
+                        <div class="comparison-card current-data">
+                            <div class="comparison-header">
+                                <h5>Current Data</h5>
+                                <span class="data-count" id="current-hosts-count">0 hosts</span>
+                            </div>
+                            <div class="data-details">
+                                <div class="data-item">
+                                    <span class="data-label">Hosts:</span>
+                                    <span class="data-value" id="current-hosts">0</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">Groups:</span>
+                                    <span class="data-value" id="current-groups">0</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">Tags:</span>
+                                    <span class="data-value" id="current-tags">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="comparison-arrow">→</div>
+                        
+                        <div class="comparison-card import-data">
+                            <div class="comparison-header">
+                                <h5>Import Data</h5>
+                                <span class="data-count" id="import-hosts-count">0 hosts</span>
+                            </div>
+                            <div class="data-details">
+                                <div class="data-item">
+                                    <span class="data-label">Hosts:</span>
+                                    <span class="data-value" id="import-hosts">0</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">Groups:</span>
+                                    <span class="data-value" id="import-groups">0</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">Tags:</span>
+                                    <span class="data-value" id="import-tags">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="import-section" id="duplicate-analysis" style="display: none;">
+                    <h4>🔍 Duplicate Analysis</h4>
+                    <div class="duplicate-summary" id="duplicate-summary">
+                        <!-- Duplicate analysis will be shown here -->
+                    </div>
+                </div>
+                
+                <div class="import-section" id="import-options" style="display: none;">
+                    <h4>⚙️ Import Options</h4>
+                    <div class="import-options-grid">
+                        <div class="option-card" data-option="overwrite">
+                            <div class="option-header">
+                                <input type="radio" name="import-mode" value="overwrite" id="overwrite-mode">
+                                <label for="overwrite-mode">
+                                    <h5>🔄 Complete Overwrite</h5>
+                                </label>
+                            </div>
+                            <p>Replace all current data with imported data. This will delete all existing hosts, groups, and tags.</p>
+                        </div>
+                        
+                        <div class="option-card" data-option="merge">
+                            <div class="option-header">
+                                <input type="radio" name="import-mode" value="merge" id="merge-mode" checked>
+                                <label for="merge-mode">
+                                    <h5>🔀 Smart Merge</h5>
+                                </label>
+                            </div>
+                            <p>Merge imported data with existing data. Duplicates will be skipped, new items will be added.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeImportDatabaseModal()">Cancel</button>
+                <button class="btn btn-primary" id="execute-import-btn" onclick="app.executeDatabaseImport()" disabled>
+                    Import Database
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication check
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch('/api/auth-status');
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // User is authenticated, load the main app
+                // Load version.js first
+                const versionScript = document.createElement('script');
+                versionScript.src = 'version.js?v=47&t=1736100000';
+                document.body.appendChild(versionScript);
+                
+                // Load update.js
+                const updateScript = document.createElement('script');
+                updateScript.src = 'update.js?v=47&t=1736100000';
+                document.body.appendChild(updateScript);
+                
+                // Then load app.js
+                const script = document.createElement('script');
+                script.src = 'app.js?v=47&t=1736100000';
+                document.body.appendChild(script);
+            } catch (error) {
+                // Network error, redirect to login
+                window.location.href = '/login.html';
+            }
+        });
+    </script>
+</body>
+</html>

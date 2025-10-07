@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # BlackJack Release Creation Script
-# Creates GitHub releases with all installers and documentation
+# This script helps create GitHub releases with Windows executables
 
 set -e
 
@@ -13,10 +13,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-VERSION=$(cat VERSION 2>/dev/null || echo "1.0.0")
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION=$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null || echo "1.0.0")
 REPO_OWNER="Zmk55"
 REPO_NAME="BlackJack"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 # Functions
 print_header() {
@@ -48,230 +48,210 @@ print_info() {
 check_prerequisites() {
     print_info "Checking prerequisites..."
     
-    # Check if GitHub CLI is installed
+    # Check if git is available
+    if ! command -v git &> /dev/null; then
+        print_error "Git is not installed"
+        exit 1
+    fi
+    
+    # Check if gh CLI is available
     if ! command -v gh &> /dev/null; then
-        print_error "GitHub CLI (gh) is not installed."
-        print_info "Install it from: https://cli.github.com/"
-        print_info "Or set GITHUB_TOKEN environment variable for API access"
-        return 1
+        print_error "GitHub CLI (gh) is not installed"
+        print_info "Install from: https://cli.github.com/"
+        exit 1
     fi
     
-    # Check if authenticated
+    # Check if Go is available
+    if ! command -v go &> /dev/null; then
+        print_error "Go is not installed"
+        print_info "Install from: https://golang.org/dl/"
+        exit 1
+    fi
+    
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        print_error "Not in a git repository"
+        exit 1
+    fi
+    
+    # Check if we're authenticated with GitHub
     if ! gh auth status &> /dev/null; then
-        print_error "Not authenticated with GitHub CLI."
+        print_error "Not authenticated with GitHub"
         print_info "Run: gh auth login"
-        return 1
-    fi
-    
-    # Check if build directory exists
-    if [[ ! -d "build" ]]; then
-        print_error "Build directory not found. Run ./installers/build-installers.sh first"
-        return 1
+        exit 1
     fi
     
     print_success "Prerequisites check passed"
 }
 
-# Build all installers
-build_installers() {
-    print_info "Building all installers..."
+# Build Windows executable
+build_windows_executable() {
+    print_info "Building Windows executable..."
     
-    if [[ -f "installers/build-installers.sh" ]]; then
-        ./installers/build-installers.sh
-        print_success "Installers built successfully"
-    else
-        print_error "Build script not found: installers/build-installers.sh"
-        return 1
+    # Create build directory
+    BUILD_DIR="$PROJECT_ROOT/build"
+    WINDOWS_BUILD="$BUILD_DIR/windows"
+    mkdir -p "$WINDOWS_BUILD"
+    
+    # Navigate to web-server directory
+    cd "$PROJECT_ROOT/web-server"
+    
+    # Install dependencies
+    go mod tidy
+    
+    # Build the executable
+    go build -ldflags "-X main.Version=$VERSION -s -w" -o "../$WINDOWS_BUILD/blackjack-server.exe" main.go
+    
+    # Go back to root
+    cd "$PROJECT_ROOT"
+    
+    # Copy web-app files
+    cp -r "$PROJECT_ROOT/web-app" "$WINDOWS_BUILD/"
+    
+    # Copy configuration files
+    if [[ -f "$PROJECT_ROOT/web-server/config.json" ]]; then
+        cp "$PROJECT_ROOT/web-server/config.json" "$WINDOWS_BUILD/"
     fi
-}
-
-# Create release notes
-create_release_notes() {
-    print_info "Creating release notes..."
+    if [[ -f "$PROJECT_ROOT/web-server/config-encrypted.json.example" ]]; then
+        cp "$PROJECT_ROOT/web-server/config-encrypted.json.example" "$WINDOWS_BUILD/"
+    fi
     
-    cat > "RELEASE_NOTES.md" << EOF
-# BlackJack SSH Client v$VERSION
-
-## 🚀 What's New
-
-### ✨ Core Features
-- **Real SSH Terminal**: Full xterm.js terminal emulation with actual SSH protocol
-- **SFTP File Browser**: Dual-pane file browser with drag-and-drop transfers
-- **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
-- **Cross-Platform**: Windows, Linux, and macOS support
-
-### 🔐 Security Features
-- **SSH Key Management**: Automatic SSH key detection and authentication
-- **Password Fallback**: Automatic fallback to password authentication
-- **Encrypted Sessions**: Secure session management with encrypted cookies
-- **Access Control**: User authentication and authorization system
-
-### 🏷️ Host Management
-- **Hierarchical Groups**: Organize hosts with nested group structures
-- **Smart Tags**: Color-coded tags with automatic Tailscale detection
-- **Search & Filter**: Real-time search across all host properties
-- **Import/Export**: Backup and restore host configurations
-
-### 🔄 Update System
-- **Automatic Updates**: Built-in version checking and update notifications
-- **One-Click Updates**: Simple update process with automatic restart
-- **Version Management**: Comprehensive version tracking and management
-
-## 📦 Installation
-
-### Windows
-1. Download \`BlackJack-Setup-$VERSION.exe\`
-2. Run as Administrator
-3. Follow the installation wizard
-4. Access at: http://localhost:8082
-
-### Linux
-#### Ubuntu/Debian
-\`\`\`bash
-sudo dpkg -i blackjack-ssh-client-$VERSION.deb
-sudo systemctl start blackjack
-\`\`\`
-
-#### CentOS/RHEL/Fedora
-\`\`\`bash
-sudo rpm -i blackjack-ssh-client-$VERSION.rpm
-sudo systemctl start blackjack
-\`\`\`
-
-#### Generic Linux
-\`\`\`bash
-tar -xzf blackjack-$VERSION-linux.tar.gz
-cd blackjack-$VERSION
-sudo ./installers/linux/install.sh
-\`\`\`
-
-## 🎮 Usage
-
-After installation:
-1. Open http://localhost:8082 in your browser
-2. Create your admin account
-3. Add SSH hosts
-4. Connect and start managing your servers!
-
-## 🔧 Command Line
-
-\`\`\`bash
-blackjack start    # Start the service
-blackjack stop     # Stop the service
-blackjack status   # Check status
-blackjack logs     # View logs
-\`\`\`
-
-## 📋 System Requirements
-
-- **OS**: Windows 10+, Ubuntu 18.04+, CentOS 7+, macOS 10.14+
-- **RAM**: 512 MB minimum, 2 GB recommended
-- **Storage**: 100 MB minimum, 500 MB recommended
-- **Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
-
-## 🆘 Support
-
-- **GitHub Issues**: [Report bugs and request features](https://github.com/$REPO_OWNER/$REPO_NAME/issues)
-- **Documentation**: [Installation Guide](https://github.com/$REPO_OWNER/$REPO_NAME/blob/main/INSTALLATION.md)
-- **Discussions**: [GitHub Discussions](https://github.com/$REPO_OWNER/$REPO_NAME/discussions)
-
-## 📈 Changelog
-
-### v$VERSION
-- 🌐 Real SSH terminal with xterm.js
-- 📁 SFTP file browser with drag-and-drop
-- 🔐 Encrypted credential storage
-- 🚀 Cross-platform installers
-- 🏷️ Advanced host management
-- 🔄 Automatic update system
-- 🎨 Modern web interface
-- 🌍 Cross-platform compatibility
-
----
-
-**BlackJack** - Modern SSH Management Made Simple 🚀
-
-*Ready to revolutionize your SSH workflow? Download now and experience the future of SSH management!*
+    # Create startup script
+    cat > "$WINDOWS_BUILD/start-blackjack.bat" << 'EOF'
+@echo off
+echo Starting BlackJack SSH Client...
+echo.
+echo Web Interface: http://localhost:8082
+echo Press Ctrl+C to stop the server
+echo.
+blackjack-server.exe
 EOF
+    
+    # Create Windows README
+    cat > "$WINDOWS_BUILD/README.txt" << EOF
+BlackJack SSH Client - Windows Build
+====================================
 
-    print_success "Release notes created: RELEASE_NOTES.md"
+Version: $VERSION
+Build Date: $(date)
+
+Quick Start:
+1. Double-click 'start-blackjack.bat' to start the server
+2. Open your browser and go to http://localhost:8082
+3. Use the web interface to manage your SSH connections
+
+Files:
+- blackjack-server.exe: Main server executable
+- web-app/: Web interface files
+- config.json: Server configuration (optional)
+- start-blackjack.bat: Startup script
+
+For more information, visit: https://github.com/$REPO_OWNER/$REPO_NAME
+EOF
+    
+    # Create zip file for distribution
+    cd "$BUILD_DIR"
+    zip -r "blackjack-windows-$VERSION.zip" windows/
+    
+    print_success "Windows executable built: blackjack-windows-$VERSION.zip"
 }
 
 # Create GitHub release
 create_github_release() {
     print_info "Creating GitHub release..."
     
-    # Check if release already exists
-    if gh release view "v$VERSION" &> /dev/null; then
-        print_warning "Release v$VERSION already exists. Updating..."
-        
-        # Delete existing release
-        gh release delete "v$VERSION" --yes
-        
-        # Wait a moment
-        sleep 2
+    # Check if tag already exists
+    if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+        print_warning "Tag v$VERSION already exists"
+        read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git tag -d "v$VERSION"
+            git push origin ":refs/tags/v$VERSION" 2>/dev/null || true
+        else
+            print_info "Using existing tag"
+        fi
     fi
+    
+    # Create tag if it doesn't exist
+    if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+        git tag -a "v$VERSION" -m "Release v$VERSION"
+        git push origin "v$VERSION"
+        print_success "Created and pushed tag v$VERSION"
+    fi
+    
+    # Create release notes
+    RELEASE_NOTES=$(cat << EOF
+## BlackJack SSH Client v$VERSION
+
+### 🚀 Quick Start
+1. Download \`blackjack-windows-$VERSION.zip\`
+2. Extract the zip file
+3. Double-click \`start-blackjack.bat\` to start the server
+4. Open your browser and go to http://localhost:8082
+
+### ✨ Features
+- **Real SSH Terminal**: Full xterm.js terminal emulation with actual SSH protocol
+- **SFTP File Browser**: Dual-pane file browser with drag-and-drop transfers
+- **Encrypted Storage**: AES-256-GCM encryption for all sensitive data
+- **Advanced Host Management**: Hierarchical groups, smart tags, and search
+- **Modern UI**: Responsive design with dark theme and smooth animations
+- **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
+
+### 📋 System Requirements
+- **OS**: Windows 10 or later
+- **RAM**: 512 MB minimum, 2 GB recommended
+- **Storage**: 100 MB
+- **Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+
+### 🔧 Installation
+This is a portable application - no installation required! Just extract and run.
+
+### 📚 Documentation
+- [Installation Guide](https://github.com/$REPO_OWNER/$REPO_NAME/blob/main/INSTALLATION.md)
+- [Quick Start Guide](https://github.com/$REPO_OWNER/$REPO_NAME/blob/main/QUICK_START.md)
+- [GitHub Repository](https://github.com/$REPO_OWNER/$REPO_NAME)
+
+### 🆘 Support
+- [GitHub Issues](https://github.com/$REPO_OWNER/$REPO_NAME/issues)
+- [GitHub Discussions](https://github.com/$REPO_OWNER/$REPO_NAME/discussions)
+EOF
+)
     
     # Create the release
     gh release create "v$VERSION" \
         --title "BlackJack SSH Client v$VERSION" \
-        --notes-file "RELEASE_NOTES.md" \
+        --notes "$RELEASE_NOTES" \
         --latest \
-        build/blackjack-ssh-client-$VERSION.deb \
-        build/linux/blackjack-$VERSION-linux.tar.gz \
-        build/linux/install.sh \
-        build/INSTALL.md
+        "build/blackjack-windows-$VERSION.zip"
     
     print_success "GitHub release created: v$VERSION"
-}
-
-# Create release summary
-create_summary() {
-    print_info "Creating release summary..."
-    
-    echo
-    print_success "Release v$VERSION created successfully!"
-    echo
-    print_info "Release URL: https://github.com/$REPO_OWNER/$REPO_NAME/releases/tag/v$VERSION"
-    echo
-    print_info "Download links:"
-    echo "  • Windows: https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/BlackJack-Setup-$VERSION.exe"
-    echo "  • Linux DEB: https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/blackjack-ssh-client-$VERSION.deb"
-    echo "  • Linux RPM: https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/blackjack-ssh-client-$VERSION.rpm"
-    echo "  • Linux TAR: https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/blackjack-$VERSION-linux.tar.gz"
-    echo
-    print_info "Installation guide: https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/INSTALL.md"
-    echo
 }
 
 # Main function
 main() {
     print_header
     
-    # Check if we're in the right directory
-    if [[ ! -f "VERSION" ]] || [[ ! -d "web-server" ]]; then
-        print_error "Please run this script from the BlackJack project root directory"
-        exit 1
-    fi
-    
     # Check prerequisites
-    if ! check_prerequisites; then
-        exit 1
+    check_prerequisites
+    
+    # Build Windows executable
+    build_windows_executable
+    
+    # Ask user if they want to create a GitHub release
+    read -p "Do you want to create a GitHub release? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        create_github_release
+    else
+        print_info "Skipping GitHub release creation"
+        print_info "Windows executable is available at: build/blackjack-windows-$VERSION.zip"
     fi
     
-    # Build installers
-    build_installers
-    
-    # Create release notes
-    create_release_notes
-    
-    # Create GitHub release
-    create_github_release
-    
-    # Create summary
-    create_summary
-    
-    print_success "Release process completed successfully!"
+    print_success "Release process completed!"
+    echo
+    print_info "Files created:"
+    ls -la "build/blackjack-windows-$VERSION.zip"
 }
 
 # Run main function

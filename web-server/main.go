@@ -34,8 +34,22 @@ var upgrader = websocket.Upgrader{
 
 // Authentication system
 type User struct {
+	Username     string    `json:"username"`
+	Password     string    `json:"password"`
+	CreatedAt    time.Time `json:"created_at"`
+	RecoveryCode string    `json:"recovery_code"`
+	DataPath     string    `json:"data_path"`
+}
+
+type AccountCreationRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type AccountRecoveryRequest struct {
+	Username     string `json:"username"`
+	RecoveryCode string `json:"recovery_code"`
+	NewPassword  string `json:"new_password"`
 }
 
 type Session struct {
@@ -46,11 +60,9 @@ type Session struct {
 }
 
 var (
-	// Default admin user (loaded from config)
-	adminUser = User{
-		Username: "admin",
-		Password: hashPassword("admin123"), // Will be overridden by config
-	}
+	// User accounts storage
+	userAccounts      = make(map[string]*User)
+	userAccountsMutex sync.RWMutex
 
 	// Active authentication sessions
 	authSessions      = make(map[string]*Session)
@@ -150,10 +162,111 @@ func loadEncryptedCredentialsFromConfig(config *Config) error {
 	return nil
 }
 
+func saveConfig() error {
+	// Create config structure with current settings
+	config := &Config{}
+	config.Auth.SessionDurationHours = 24
+	config.Server.Port = "8082"
+	config.Server.Host = "0.0.0.0"
+	config.Auth.UseEncryptedCredentials = true
+	config.Auth.EncryptedCredentialsFile = "credentials.enc"
+	config.Auth.MasterPasswordFile = "master.key"
+
+	// Write config to file
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %v", err)
+	}
+
+	if err := os.WriteFile("config.json", data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %v", err)
+	}
+
+	log.Printf("✅ Configuration saved to config.json")
+	return nil
+}
+
 // Authentication helper functions
 func hashPassword(password string) string {
 	hash := sha256.Sum256([]byte(password))
 	return base64.StdEncoding.EncodeToString(hash[:])
+}
+
+func checkPassword(password, hashedPassword string) bool {
+	// For hashed passwords
+	hashedInput := hashPassword(password)
+	return hashedInput == hashedPassword
+}
+
+func generateRecoveryCode() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
+func createUser(username, password string) (*User, error) {
+	userAccountsMutex.Lock()
+	defer userAccountsMutex.Unlock()
+
+	// Check if user already exists
+	if _, exists := userAccounts[username]; exists {
+		return nil, fmt.Errorf("username already exists")
+	}
+
+	// Validate username and password
+	if len(username) < 3 {
+		return nil, fmt.Errorf("username must be at least 3 characters")
+	}
+	if len(password) < 6 {
+		return nil, fmt.Errorf("password must be at least 6 characters")
+	}
+
+	// Create user
+	user := &User{
+		Username:     username,
+		Password:     hashPassword(password),
+		CreatedAt:    time.Now(),
+		RecoveryCode: generateRecoveryCode(),
+		DataPath:     fmt.Sprintf("data_%s", username),
+	}
+
+	userAccounts[username] = user
+	return user, nil
+}
+
+func getUser(username string) (*User, bool) {
+	userAccountsMutex.RLock()
+	defer userAccountsMutex.RUnlock()
+	user, exists := userAccounts[username]
+	return user, exists
+}
+
+func saveUserAccounts() error {
+	userAccountsMutex.RLock()
+	defer userAccountsMutex.RUnlock()
+
+	data, err := json.MarshalIndent(userAccounts, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile("accounts.json", data, 0600)
+}
+
+func loadUserAccounts() error {
+	data, err := os.ReadFile("accounts.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No accounts file exists yet, start with empty accounts
+			return nil
+		}
+		return err
+	}
+
+	userAccountsMutex.Lock()
+	defer userAccountsMutex.Unlock()
+
+	return json.Unmarshal(data, &userAccounts)
 }
 
 func generateSessionID() string {
@@ -518,40 +631,49 @@ func main() {
 	// Load configuration
 	config := loadConfig()
 
-	// Update admin user from config
-	if config.Auth.Username != "" {
-		adminUser.Username = config.Auth.Username
+	// Load user accounts
+	if err := loadUserAccounts(); err != nil {
+		log.Printf("❌ Error loading user accounts: %v", err)
 	}
-	if config.Auth.Password != "" {
-		adminUser.Password = hashPassword(config.Auth.Password)
-	}
+
 	if config.Auth.SessionDurationHours > 0 {
 		sessionDuration = time.Duration(config.Auth.SessionDurationHours) * time.Hour
 	}
 
-	log.Printf("🔐 Authentication enabled - Username: %s", adminUser.Username)
+	log.Printf("🔐 Account-based authentication enabled")
 	log.Printf("⏰ Session duration: %v", sessionDuration)
 
 	// Authentication endpoints
 	http.HandleFunc("/api/login", handleLogin)
 	http.HandleFunc("/api/logout", handleLogout)
 	http.HandleFunc("/api/auth-status", handleAuthStatus)
+	http.HandleFunc("/api/create-account", handleCreateAccount)
+	http.HandleFunc("/api/recover-account", handleRecoverAccount)
+
+	// Account management endpoints (protected)
+	http.HandleFunc("/api/account-info", requireAuth(handleAccountInfo))
+	http.HandleFunc("/api/change-password", requireAuth(handleChangePassword))
 
 	// Serve login page without authentication
 	http.HandleFunc("/login.html", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "../web-app/login.html")
+		http.ServeFile(w, r, "./web-app/login.html")
+	})
+
+	// Serve favicon to prevent 404 errors
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	// Serve index.html without authentication (client-side auth check)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// If requesting root, serve index.html
 		if r.URL.Path == "/" {
-			http.ServeFile(w, r, "../web-app/index.html")
+			http.ServeFile(w, r, "./web-app/index.html")
 			return
 		}
 
 		// For all other static files, require authentication
-		requireAuth(http.FileServer(http.Dir("../web-app/")).ServeHTTP)(w, r)
+		requireAuth(http.FileServer(http.Dir("./web-app/")).ServeHTTP)(w, r)
 	})
 
 	// WebSocket endpoint for SSH connections (protected)
@@ -781,6 +903,11 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 
 				signer, err := ssh.ParsePrivateKey(key)
 				if err != nil {
+					// Try parsing with passphrase prompt (for keys with passphrases)
+					if strings.Contains(err.Error(), "passphrase") {
+						log.Printf("SSH key %s requires a passphrase, skipping", keyPath)
+						continue
+					}
 					log.Printf("Failed to parse key file %s: %v", keyPath, err)
 					continue
 				}
@@ -799,66 +926,69 @@ func createSSHClient(req SSHRequest) (*ssh.Client, error) {
 		log.Printf("No password provided for %s@%s, relying on SSH keys only", req.Username, req.Host)
 	}
 
-	// 3. Try key file if provided
+	// 3. Try key file if provided (and not already loaded above)
 	if req.KeyPath != "" {
-		key, err := os.ReadFile(req.KeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read key file: %v", err)
+		// Check if this key path was already loaded in the common key paths section
+		alreadyLoaded := false
+		homeDir := os.Getenv("HOME")
+		if homeDir == "" {
+			homeDir = os.Getenv("USERPROFILE") // Windows fallback
 		}
 
-		signer, err := ssh.ParsePrivateKey(key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse private key: %v", err)
+		commonKeyPaths := []string{
+			homeDir + "/.ssh/id_ed25519",
+			homeDir + "/.ssh/id_rsa",
+			homeDir + "/.ssh/id_ecdsa",
+			homeDir + "/.ssh/id_dsa",
 		}
 
-		authMethods = append(authMethods, ssh.PublicKeys(signer))
-	}
+		for _, commonPath := range commonKeyPaths {
+			if req.KeyPath == commonPath {
+				alreadyLoaded = true
+				break
+			}
+		}
 
-	// 4. Try common SSH key locations
-	homeDir := os.Getenv("HOME")
-	if homeDir == "" {
-		homeDir = os.Getenv("USERPROFILE") // Windows fallback
-	}
-
-	commonKeyPaths := []string{
-		homeDir + "/.ssh/id_rsa",
-		homeDir + "/.ssh/id_ed25519",
-		homeDir + "/.ssh/id_ecdsa",
-		homeDir + "/.ssh/id_dsa",
-	}
-
-	for _, keyPath := range commonKeyPaths {
-		if _, err := os.Stat(keyPath); err == nil {
-			key, err := os.ReadFile(keyPath)
+		if !alreadyLoaded {
+			key, err := os.ReadFile(req.KeyPath)
 			if err != nil {
-				log.Printf("Failed to read key file %s: %v", keyPath, err)
-				continue
+				return nil, fmt.Errorf("failed to read key file: %v", err)
 			}
 
 			signer, err := ssh.ParsePrivateKey(key)
 			if err != nil {
-				log.Printf("Failed to parse key file %s: %v", keyPath, err)
-				continue
+				return nil, fmt.Errorf("failed to parse private key: %v", err)
 			}
 
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
-			log.Printf("Added SSH key: %s", keyPath)
+			log.Printf("Added custom SSH key: %s", req.KeyPath)
+		} else {
+			log.Printf("SSH key %s already loaded, skipping duplicate", req.KeyPath)
 		}
 	}
+
+	// Note: SSH keys are already loaded above in the SSH agent fallback section
+	// No need to load them again here
 
 	// Set all authentication methods
 	config.Auth = authMethods
 
 	// Connect to SSH server
 	addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
+	log.Printf("🔗 Attempting SSH connection to %s with %d auth methods", addr, len(authMethods))
+
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		// Provide more specific error information
 		if authErr, ok := err.(*ssh.ServerAuthError); ok {
-			return nil, fmt.Errorf("SSH authentication failed: %v. Please ensure your public key is in the server's authorized_keys file", authErr)
+			log.Printf("❌ SSH authentication failed: %v", authErr)
+			return nil, fmt.Errorf("SSH authentication failed: %v. Please ensure your public key is in the server's authorized_keys file or check your password", authErr)
 		}
+		log.Printf("❌ SSH connection failed: %v", err)
 		return nil, fmt.Errorf("SSH connection failed: %v", err)
 	}
+
+	log.Printf("✅ SSH connection established successfully to %s", addr)
 
 	return client, nil
 }
@@ -1222,10 +1352,12 @@ func handleLoadData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get master password from config
+	// Get config
 	config := loadConfig()
+
+	// Encrypted credentials are required for data storage
 	if !config.Auth.UseEncryptedCredentials {
-		http.Error(w, "Encrypted credentials not enabled", http.StatusBadRequest)
+		http.Error(w, "Encrypted credentials must be enabled for data storage", http.StatusBadRequest)
 		return
 	}
 
@@ -1859,8 +1991,15 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate credentials
-	if loginReq.Username != adminUser.Username || hashPassword(loginReq.Password) != adminUser.Password {
+	// Get user from accounts
+	user, exists := getUser(loginReq.Username)
+	if !exists {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate password
+	if !checkPassword(loginReq.Password, user.Password) {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -1923,6 +2062,100 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔐 User logged out")
 }
 
+func handleCreateAccount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req AccountCreationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Create user account
+	user, err := createUser(req.Username, req.Password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Save accounts to file
+	if err := saveUserAccounts(); err != nil {
+		log.Printf("❌ Error saving user accounts: %v", err)
+		http.Error(w, "Failed to save account", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response with recovery code
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"message":      "Account created successfully",
+		"username":     user.Username,
+		"recoveryCode": user.RecoveryCode,
+		"warning":      "IMPORTANT: Save your recovery code in a secure location. You will need it to recover your account if you forget your password.",
+	})
+
+	log.Printf("🔐 New account created: %s", user.Username)
+}
+
+func handleRecoverAccount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req AccountRecoveryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get user from accounts
+	user, exists := getUser(req.Username)
+	if !exists {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	// Validate recovery code
+	if user.RecoveryCode != req.RecoveryCode {
+		http.Error(w, "Invalid recovery code", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate new password
+	if len(req.NewPassword) < 6 {
+		http.Error(w, "New password must be at least 6 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Update password and generate new recovery code
+	user.Password = hashPassword(req.NewPassword)
+	user.RecoveryCode = generateRecoveryCode()
+
+	// Save accounts to file
+	if err := saveUserAccounts(); err != nil {
+		log.Printf("❌ Error saving user accounts: %v", err)
+		http.Error(w, "Failed to update account", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response with new recovery code
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"message":      "Password updated successfully",
+		"username":     user.Username,
+		"recoveryCode": user.RecoveryCode,
+		"warning":      "IMPORTANT: Your recovery code has been updated. Save the new recovery code in a secure location.",
+	})
+
+	log.Printf("🔐 Account recovered and password updated: %s", user.Username)
+}
+
 func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1953,6 +2186,106 @@ func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 		"authenticated": true,
 		"user":          session.Username,
 		"expires_at":    session.ExpiresAt,
+	})
+}
+
+// Account Management Handlers
+func handleAccountInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get session from context (set by requireAuth middleware)
+	session, ok := r.Context().Value("session").(*Session)
+	if !ok {
+		http.Error(w, "Session not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user account info
+	user, exists := getUser(session.Username)
+	if !exists {
+		http.Error(w, "User account not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"username":  session.Username,
+		"lastLogin": session.CreatedAt.Format("2006-01-02 15:04:05"),
+		"createdAt": user.CreatedAt.Format("2006-01-02 15:04:05"),
+		"dataPath":  user.DataPath,
+	})
+}
+
+func handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get session from context (set by requireAuth middleware)
+	session, ok := r.Context().Value("session").(*Session)
+	if !ok {
+		http.Error(w, "Session not found", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get user account
+	user, exists := getUser(session.Username)
+	if !exists {
+		http.Error(w, "User account not found", http.StatusNotFound)
+		return
+	}
+
+	// Validate current password
+	if !checkPassword(req.CurrentPassword, user.Password) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Current password is incorrect",
+		})
+		return
+	}
+
+	// Validate new password
+	if len(req.NewPassword) < 6 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "New password must be at least 6 characters long",
+		})
+		return
+	}
+
+	// Update the user password
+	user.Password = hashPassword(req.NewPassword)
+
+	// Save accounts to file
+	if err := saveUserAccounts(); err != nil {
+		log.Printf("❌ Error saving user accounts: %v", err)
+		http.Error(w, "Failed to save password change", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("🔐 User %s changed password successfully", session.Username)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Password changed successfully",
 	})
 }
 

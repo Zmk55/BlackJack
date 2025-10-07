@@ -3,237 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlackJack - Login</title>
+    <title>BlackJack - Secure SSH Management</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Login Page Specific Styles */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #e2e8f0;
+            min-height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .login-container {
-            background: rgba(30, 41, 59, 0.8);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .login-header {
             text-align: center;
-            margin-bottom: 2rem;
         }
 
-        .login-header h1 {
-            font-size: 2rem;
+        .logo {
+            font-size: 2.5rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
+            color: #2d3748;
+            margin-bottom: 10px;
         }
 
-        .login-header p {
-            color: #94a3b8;
-            font-size: 0.9rem;
+        .tagline {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 1rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 20px;
+            text-align: left;
         }
 
-        .form-group label {
+        .form-label {
             display: block;
-            margin-bottom: 0.5rem;
-            color: #e2e8f0;
+            margin-bottom: 8px;
+            color: #2d3748;
             font-weight: 500;
+            font-size: 0.9rem;
         }
 
         .form-input {
             width: 100%;
-            padding: 0.75rem 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 8px;
-            color: #e2e8f0;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
             font-size: 1rem;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .form-input::placeholder {
-            color: #64748b;
-        }
-
-        .login-btn {
+        .btn {
             width: 100%;
-            padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            padding: 12px;
             border: none;
-            border-radius: 8px;
-            color: white;
+            border-radius: 10px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
         }
 
-        .login-btn:hover {
-            background: linear-gradient(135deg, #2563eb, #1e40af);
-            transform: translateY(-1px);
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
 
-        .login-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .btn-link {
+            background: none;
+            color: #667eea;
+            text-decoration: none;
             font-size: 0.9rem;
+            padding: 8px;
+            margin: 5px 0;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        .divider {
+            margin: 20px 0;
+            position: relative;
+            text-align: center;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider span {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0 15px;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+
+        .alert-warning {
+            background: #fef5e7;
+            color: #744210;
+            border: 1px solid #f6e05e;
+        }
+
+        .form-section {
             display: none;
         }
 
-        .success-message {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            color: #22c55e;
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+        .form-section.active {
+            display: block;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
             font-size: 0.9rem;
-            display: none;
+            margin-bottom: 20px;
+            padding: 8px;
         }
 
-        .security-info {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1.5rem;
+        .back-btn:hover {
+            text-decoration: underline;
         }
 
-        .security-info h3 {
-            color: #3b82f6;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
+        .recovery-code {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+            word-break: break-all;
         }
 
-        .security-info p {
-            color: #94a3b8;
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
             font-size: 0.8rem;
-            line-height: 1.4;
+            cursor: pointer;
+            margin-top: 10px;
         }
 
-        .default-credentials {
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.2);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
+        .copy-btn:hover {
+            background: #5a67d8;
         }
 
-        .default-credentials h3 {
-            color: #f59e0b;
+        .features {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .features h4 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .features li {
+            color: #718096;
+            margin-bottom: 8px;
             font-size: 0.9rem;
-            margin-bottom: 0.5rem;
+            padding-left: 20px;
+            position: relative;
         }
 
-        .default-credentials p {
-            color: #fbbf24;
-            font-size: 0.8rem;
-            font-family: 'Monaco', 'Menlo', monospace;
+        .features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="login-header">
-            <h1>🔐 BlackJack</h1>
-            <p>SSH Management System</p>
-        </div>
+        <div class="logo">🃏 BlackJack</div>
+        <div class="tagline">Secure SSH Management Made Simple</div>
 
-        <div class="error-message" id="error-message"></div>
-        <div class="success-message" id="success-message"></div>
+        <!-- Alert Container -->
+        <div id="alert-container"></div>
 
-        <form id="login-form">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" class="form-input" placeholder="Enter username" required>
+        <!-- Login Form -->
+        <div id="login-section" class="form-section active">
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+
+            <div class="divider">
+                <span>or</span>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-input" placeholder="Enter password" required>
+            <button class="btn btn-secondary" onclick="showCreateAccount()">Create New Account</button>
+            <button class="btn btn-link" onclick="showRecoverAccount()">Forgot Password?</button>
+
+            <div class="features">
+                <h4>What you get with BlackJack:</h4>
+                <ul>
+                    <li>Secure SSH terminal access</li>
+                    <li>SFTP file browser with drag & drop</li>
+                    <li>Host organization with groups and tags</li>
+                    <li>Encrypted credential storage</li>
+                    <li>Cross-platform compatibility</li>
+                </ul>
             </div>
-
-            <button type="submit" class="login-btn" id="login-btn">
-                <span id="login-text">Sign In</span>
-                <span id="login-loading" style="display: none;">Signing in...</span>
-            </button>
-        </form>
-
-        <div class="default-credentials">
-            <h3>⚠️ Default Credentials</h3>
-            <p>Username: admin<br>Password: admin123</p>
-            <p style="margin-top: 0.5rem; color: #ef4444;">Please change these in production!</p>
         </div>
 
-        <div class="security-info">
-            <h3>🔒 Security Features</h3>
-            <p>• Session-based authentication<br>
-            • Secure password hashing<br>
-            • HttpOnly cookies<br>
-            • 24-hour session timeout</p>
+        <!-- Create Account Form -->
+        <div id="create-section" class="form-section">
+            <button class="back-btn" onclick="showLogin()">← Back to Sign In</button>
+            <h3 style="color: #2d3748; margin-bottom: 20px;">Create Your Account</h3>
+            
+            <form id="create-form">
+                <div class="form-group">
+                    <label class="form-label" for="create-username">Username</label>
+                    <input type="text" id="create-username" class="form-input" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="create-password">Password</label>
+                    <input type="password" id="create-password" class="form-input" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+        </div>
+
+        <!-- Account Created Success -->
+        <div id="success-section" class="form-section">
+            <h3 style="color: #2d3748; margin-bottom: 20px;">Account Created Successfully!</h3>
+            <div class="alert alert-warning">
+                <strong>IMPORTANT:</strong> Save your recovery code in a secure location. You will need it to recover your account if you forget your password.
+            </div>
+            <div class="recovery-code" id="recovery-code-display"></div>
+            <button class="copy-btn" onclick="copyRecoveryCode()">Copy Recovery Code</button>
+            <button class="btn btn-primary" onclick="showLogin()" style="margin-top: 20px;">Continue to Sign In</button>
+        </div>
+
+        <!-- Recover Account Form -->
+        <div id="recover-section" class="form-section">
+            <button class="back-btn" onclick="showLogin()">← Back to Sign In</button>
+            <h3 style="color: #2d3748; margin-bottom: 20px;">Recover Your Account</h3>
+            
+            <form id="recover-form">
+                <div class="form-group">
+                    <label class="form-label" for="recover-username">Username</label>
+                    <input type="text" id="recover-username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="recovery-code">Recovery Code</label>
+                    <input type="text" id="recovery-code" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="new-password">New Password</label>
+                    <input type="password" id="new-password" class="form-input" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm-new-password">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+            </form>
+        </div>
+
+        <!-- Recovery Success -->
+        <div id="recovery-success-section" class="form-section">
+            <h3 style="color: #2d3748; margin-bottom: 20px;">Password Reset Successfully!</h3>
+            <div class="alert alert-warning">
+                <strong>IMPORTANT:</strong> Your recovery code has been updated. Save the new recovery code in a secure location.
+            </div>
+            <div class="recovery-code" id="new-recovery-code-display"></div>
+            <button class="copy-btn" onclick="copyNewRecoveryCode()">Copy New Recovery Code</button>
+            <button class="btn btn-primary" onclick="showLogin()" style="margin-top: 20px;">Continue to Sign In</button>
         </div>
     </div>
 
     <script>
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
+        let currentRecoveryCode = '';
+
+        // Show different sections
+        function showLogin() {
+            hideAllSections();
+            document.getElementById('login-section').classList.add('active');
+        }
+
+        function showCreateAccount() {
+            hideAllSections();
+            document.getElementById('create-section').classList.add('active');
+        }
+
+        function showRecoverAccount() {
+            hideAllSections();
+            document.getElementById('recover-section').classList.add('active');
+        }
+
+        function hideAllSections() {
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+        }
+
+        // Show alert
+        function showAlert(message, type = 'error') {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Copy recovery code
+        function copyRecoveryCode() {
+            navigator.clipboard.writeText(currentRecoveryCode).then(() => {
+                showAlert('Recovery code copied to clipboard!', 'success');
+            });
+        }
+
+        function copyNewRecoveryCode() {
+            navigator.clipboard.writeText(currentRecoveryCode).then(() => {
+                showAlert('New recovery code copied to clipboard!', 'success');
+            });
+        }
+
+        // Login form
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('login-btn');
-            const loginText = document.getElementById('login-text');
-            const loginLoading = document.getElementById('login-loading');
-            const errorMessage = document.getElementById('error-message');
-            const successMessage = document.getElementById('success-message');
-
-            // Hide previous messages
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-
-            // Show loading state
-            loginBtn.disabled = true;
-            loginText.style.display = 'none';
-            loginLoading.style.display = 'inline';
 
             try {
                 const response = await fetch('/api/login', {
@@ -246,31 +432,96 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.success) {
-                    successMessage.textContent = 'Login successful! Redirecting...';
-                    successMessage.style.display = 'block';
-                    
-                    // Redirect to main app after a short delay
+                if (response.ok) {
+                    showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = '/';
                     }, 1000);
                 } else {
-                    errorMessage.textContent = data.message || 'Login failed. Please check your credentials.';
-                    errorMessage.style.display = 'block';
+                    showAlert(data.error || 'Login failed', 'error');
                 }
             } catch (error) {
-                errorMessage.textContent = 'Network error. Please try again.';
-                errorMessage.style.display = 'block';
-            } finally {
-                // Reset button state
-                loginBtn.disabled = false;
-                loginText.style.display = 'inline';
-                loginLoading.style.display = 'none';
+                showAlert('Network error. Please try again.', 'error');
             }
         });
 
-        // Check if already authenticated
-        window.addEventListener('load', async function() {
+        // Create account form
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('create-username').value;
+            const password = document.getElementById('create-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (password !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/create-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentRecoveryCode = data.recoveryCode;
+                    document.getElementById('recovery-code-display').textContent = data.recoveryCode;
+                    hideAllSections();
+                    document.getElementById('success-section').classList.add('active');
+                } else {
+                    showAlert(data.error || 'Account creation failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+            }
+        });
+
+        // Recover account form
+        document.getElementById('recover-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('recover-username').value;
+            const recoveryCode = document.getElementById('recovery-code').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+
+            if (newPassword !== confirmNewPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/recover-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, recoveryCode, newPassword }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentRecoveryCode = data.recoveryCode;
+                    document.getElementById('new-recovery-code-display').textContent = data.recoveryCode;
+                    hideAllSections();
+                    document.getElementById('recovery-success-section').classList.add('active');
+                } else {
+                    showAlert(data.error || 'Account recovery failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+            }
+        });
+
+        // Check if already logged in
+        async function checkAuthStatus() {
             try {
                 const response = await fetch('/api/auth-status');
                 const data = await response.json();
@@ -279,9 +530,12 @@
                     window.location.href = '/';
                 }
             } catch (error) {
-                // Ignore errors, user needs to login
+                // Ignore errors, stay on login page
             }
-        });
+        }
+
+        // Check auth status on page load
+        checkAuthStatus();
     </script>
 </body>
 </html>

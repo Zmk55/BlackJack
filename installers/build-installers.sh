@@ -52,6 +52,84 @@ create_build_dir() {
     print_success "Build directory created"
 }
 
+# Build Windows executable
+build_windows_executable() {
+    print_info "Building Windows executable..."
+    
+    # Check if Go is installed
+    if ! command -v go &> /dev/null; then
+        print_error "Go is not installed. Please install Go 1.22+ to build Windows executable."
+        print_info "Download from: https://golang.org/dl/"
+        return 1
+    fi
+    
+    # Create Windows build directory
+    WINDOWS_BUILD="$BUILD_DIR/windows"
+    mkdir -p "$WINDOWS_BUILD"
+    
+    # Navigate to web-server directory
+    cd "$PROJECT_ROOT/web-server"
+    
+    # Install dependencies
+    go mod tidy
+    
+    # Build the executable
+    go build -ldflags "-X main.Version=$VERSION -s -w" -o "../$WINDOWS_BUILD/blackjack-server.exe" main.go
+    
+    # Go back to root
+    cd "$PROJECT_ROOT"
+    
+    # Copy web-app files
+    cp -r "$PROJECT_ROOT/web-app" "$WINDOWS_BUILD/"
+    
+    # Copy configuration files
+    if [[ -f "$PROJECT_ROOT/web-server/config.json" ]]; then
+        cp "$PROJECT_ROOT/web-server/config.json" "$WINDOWS_BUILD/"
+    fi
+    if [[ -f "$PROJECT_ROOT/web-server/config-encrypted.json.example" ]]; then
+        cp "$PROJECT_ROOT/web-server/config-encrypted.json.example" "$WINDOWS_BUILD/"
+    fi
+    
+    # Create startup script
+    cat > "$WINDOWS_BUILD/start-blackjack.bat" << 'EOF'
+@echo off
+echo Starting BlackJack SSH Client...
+echo.
+echo Web Interface: http://localhost:8082
+echo Press Ctrl+C to stop the server
+echo.
+blackjack-server.exe
+EOF
+    
+    # Create Windows README
+    cat > "$WINDOWS_BUILD/README.txt" << EOF
+BlackJack SSH Client - Windows Build
+====================================
+
+Version: $VERSION
+Build Date: $(date)
+
+Quick Start:
+1. Double-click 'start-blackjack.bat' to start the server
+2. Open your browser and go to http://localhost:8082
+3. Use the web interface to manage your SSH connections
+
+Files:
+- blackjack-server.exe: Main server executable
+- web-app/: Web interface files
+- config.json: Server configuration (optional)
+- start-blackjack.bat: Startup script
+
+For more information, visit: https://github.com/Zmk55/BlackJack
+EOF
+    
+    # Create zip file for distribution
+    cd "$BUILD_DIR"
+    zip -r "blackjack-windows-$VERSION.zip" windows/
+    
+    print_success "Windows executable built: blackjack-windows-$VERSION.zip"
+}
+
 # Build Windows installer
 build_windows_installer() {
     print_info "Building Windows installer..."
@@ -379,7 +457,10 @@ main() {
     
     create_build_dir
     
-    # Build installers based on available tools
+    # Build Windows executable (always try if Go is available)
+    build_windows_executable
+    
+    # Build Windows installer if NSIS is available
     if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || command -v makensis &> /dev/null; then
         build_windows_installer
     else

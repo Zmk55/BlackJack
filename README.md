@@ -47,7 +47,8 @@ A comprehensive, cross-platform SSH client with web-based terminal, SFTP file br
 #### **🔗 Direct Download Links**
 | Platform | Download | Size | Instructions |
 |----------|----------|------|--------------|
-| **Windows** | [📦 Download Installer](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/BlackJack-Setup-1.0.0.exe) | ~5 MB | Run as Administrator |
+| **Windows** | [📦 Download Executable](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-windows-1.0.0.zip) | ~5 MB | Extract and run `start-blackjack.bat` |
+| **Windows Installer** | [📦 Download Installer](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/BlackJack-Setup-1.0.0.exe) | ~5 MB | Run as Administrator |
 | **Ubuntu/Debian** | [📦 Download .deb](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.deb) | ~5 MB | `sudo dpkg -i blackjack-ssh-client-1.0.0.deb` |
 | **CentOS/RHEL/Fedora** | [📦 Download .rpm](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-ssh-client-1.0.0.rpm) | ~5 MB | `sudo rpm -i blackjack-ssh-client-1.0.0.rpm` |
 | **Generic Linux** | [📦 Download .tar.gz](https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-1.0.0-linux.tar.gz) | ~200 MB | Extract and run `sudo ./install.sh` |
@@ -56,7 +57,12 @@ A comprehensive, cross-platform SSH client with web-based terminal, SFTP file br
 
 **Windows Users:**
 ```bash
-# Download and run
+# Method 1: Portable Executable (Recommended)
+curl -L -o blackjack-windows.zip https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/blackjack-windows-1.0.0.zip
+# Extract the zip file and double-click start-blackjack.bat
+# Access at: http://localhost:8082
+
+# Method 2: Windows Installer
 curl -L -o BlackJack-Setup.exe https://github.com/Zmk55/BlackJack/releases/download/v1.0.0/BlackJack-Setup-1.0.0.exe
 ./BlackJack-Setup.exe
 # Follow the GUI wizard - that's it!
@@ -309,6 +315,12 @@ python3 -m http.server 8083
 cd web-server
 go build -o blackjack-server main.go
 
+# Build Windows executable
+make build-windows-go
+# Or use the build script directly:
+./dev/build-windows.bat  # Windows
+./dev/build-windows-final.ps1  # PowerShell (recommended)
+
 # Build installers
 ./installers/build-installers.sh
 
@@ -316,6 +328,9 @@ go build -o blackjack-server main.go
 cd desktop
 npm install
 npm run tauri build
+
+# Create GitHub release with Windows executable
+./create-release.sh
 ```
 
 ### 🏗️ **Architecture**
